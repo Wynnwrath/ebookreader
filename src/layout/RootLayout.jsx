@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
-import Sidebar from "../components/Sidebar";
+import Sidebar from "../components/SideBar";
 import Header from "../components/HeaderComp/Header";
 import stellarbg from "../assets/images/stellarbg.gif"; 
 
@@ -26,7 +26,7 @@ export default function RootLayout() {
         bg-cover bg-center bg-no-repeat
       `}
       style={{
-        backgroundImage: `url(${stellarbg})`, // ✅ GIF background
+        backgroundImage: `url(${stellarbg})`,
       }}
     >
       {/* Header */}

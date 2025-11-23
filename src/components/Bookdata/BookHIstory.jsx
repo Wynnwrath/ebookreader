@@ -4,6 +4,7 @@ import BookStackImg from "../../images/bookstack.png";
 import BookAuthor from "../../images/bookAuthor.png";
 import Reading from "../../images/Reading.png";
 
+{/* BookHistory Component to display reading statistics */}
 export default function BookHistory() {
   return (
     <div className="w-full flex gap-10">

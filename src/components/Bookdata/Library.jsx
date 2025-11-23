@@ -1,4 +1,4 @@
-import BookHistory from "./BookHistory";
+import BookHistory from "./BookHIstory";
 import BookSlider from "./BookSlider";
 
 export default function Library() {
@@ -40,7 +40,7 @@ export default function Library() {
   return (
     <div className="w-full flex flex-col gap-10 items-center">
       {/* Centered BookHistory */}
-      <div className="flex justify-center w-full">
+      <div className="flex ">
         <BookHistory />
       </div>
 

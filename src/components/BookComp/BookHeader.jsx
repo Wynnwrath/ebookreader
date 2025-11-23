@@ -1,10 +1,10 @@
-import React from "react";
 import { IoIosArrowRoundBack } from "react-icons/io";
 import { SlOptionsVertical } from "react-icons/sl";
+import GlassCard from "../../ui/GlassCard";
 
 export default function BookHeader({ onBack, onMenu }) {
   return (
-    <header className="flex items-center justify-between px-6 py-4 bg-transparent">
+    <GlassCard className="flex items-center justify-between px-6 py-4">
       {/* Back Button */}
       <button
         onClick={onBack}
@@ -21,6 +21,6 @@ export default function BookHeader({ onBack, onMenu }) {
       >
         <SlOptionsVertical size={22} />
       </button>
-    </header>
+    </GlassCard>
   );
 }

@@ -16,7 +16,7 @@
         "width": 1580,
         "height": 1020,
         "titleBarStyle": "Transparent",
-        "decorations": false,
+        "decorations": true,
         "resizable": true
       }
     ],

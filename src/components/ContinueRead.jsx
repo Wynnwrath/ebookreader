@@ -1,5 +1,5 @@
 import TheTraitorBook from "../images/thetraitorbook.png";
-import Library from "../assets/Bookdata/Library";
+import Library from "./Bookdata/Library";
 
 export default function ContinueRead() {
   const books = [
