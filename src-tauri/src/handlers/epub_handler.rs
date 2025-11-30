@@ -135,7 +135,7 @@ fn sanitize_filename(filename: &str) -> String {
 }
 
 /// Extracts and returns all HTML content from an EPUB file
-pub async fn get_epub_content(
+pub async fn get_epub_content( // TODO: Verify functionality
     path: &str,
 ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
     let path_str = path.to_string();

@@ -77,9 +77,9 @@ impl UserRepo {
                 Box::new(e.to_string()),
             )
         })?;
-
+        // TODO: Use eq
         return match users
-            .filter(username.like(format!("%{}%", username_query)))
+            .filter(username.eq(format!("%{}%", username_query)))
             .load::<Users>(&mut conn)
             .await
         {

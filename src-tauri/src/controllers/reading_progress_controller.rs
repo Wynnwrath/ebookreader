@@ -17,7 +17,7 @@ use super::dto::reading_progress_dto::{ReadingProgressDTO, UpdateProgressDTO};
 pub struct BookQueryParams {
     book_id: i32,
 }
-
+// TODO: Move to a TokenService helper module
 async fn get_user_from_token(headers: &HeaderMap) -> Result<i32, StatusCode> {
     let token = headers
         .get("Authorization")
