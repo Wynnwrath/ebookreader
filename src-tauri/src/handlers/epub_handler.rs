@@ -2,6 +2,7 @@ use base64::{engine::general_purpose, Engine as _};
 use rbook::{prelude::*, Ebook, Epub};
 use regex::Regex;
 use scraper::{Html, Selector};
+use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 use tokio::{fs, task::JoinError};
 use walkdir::WalkDir;
@@ -17,6 +18,7 @@ pub struct BookMetadata {
     pub isbn: Option<String>,
     pub file_path: String,
     pub cover_data: Option<(Vec<u8>, String)>, // (data, mime_type)
+    pub checksum: String,
 }
 
 // TODO: Test this function
@@ -47,6 +49,8 @@ pub async fn scan_epubs<P: AsRef<Path> + Send + 'static>(
 pub async fn parse_epub_meta(
     path: String,
 ) -> Result<BookMetadata, Box<dyn std::error::Error + Send + Sync>> {
+    let checksum = compute_checksum(&path).await?;
+    
     tokio::task::spawn_blocking(move || {
         let book = Epub::open(&path)?;
         let metadata = book.metadata();
@@ -96,11 +100,13 @@ pub async fn parse_epub_meta(
             isbn,
             file_path: path,
             cover_data,
+            checksum,
         })
     })
     .await?
 }
 
+// TODO: Test this function
 /// Stores a cover image to disk and returns the path.
 /// The cover is stored in a `covers` subdirectory of the current working directory.
 pub async fn store_cover_to_disk(
@@ -194,4 +200,13 @@ pub async fn get_epub_content( // TODO: Verify functionality
     })
     .await?
     .map_err(|e: String| e.into())
+}
+// TODO: Add function to store metadata to disk which can be used by the frontend
+// e.g., as a JSON file alongside the EPUB file.
+
+/// Computes the SHA-256 checksum of a file and returns it as a hex string.
+pub async fn compute_checksum(path: &str) -> Result<String, std::io::Error> {
+    let data = fs::read(path).await?;
+    let hash = Sha256::digest(&data);
+    Ok(format!("{:x}", hash))
 }
