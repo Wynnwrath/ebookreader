@@ -64,7 +64,6 @@ impl UserRepo {
             Err(e) => Err(e),
         }
     }
-    // TODO: Create a more reliable search that returns only one user
     pub async fn search_by_username(
         &self,
         username_query: &str,
@@ -77,9 +76,9 @@ impl UserRepo {
                 Box::new(e.to_string()),
             )
         })?;
-        // TODO: Use eq
-        return match users
-            .filter(username.eq(format!("%{}%", username_query)))
+
+        match users
+            .filter(username.like(format!("%{}%", username_query)))
             .load::<Users>(&mut conn)
             .await
         {
@@ -87,7 +86,28 @@ impl UserRepo {
             Ok(value) => Ok(Some(value)),
             Err(Error::NotFound) => Ok(None),
             Err(e) => Err(e),
-        };
+        }
+    }
+    // TODO: Test this function
+    pub async fn search_by_username_exact(&self, username_query: &str) -> Result<Option<Users>, Error> {
+        use crate::data::models::schema::users::dsl::*;
+
+        let mut conn = connect_from_pool().await.map_err(|e| {
+            Error::DatabaseError(
+                DatabaseErrorKind::UnableToSendCommand,
+                Box::new(e.to_string()),
+            )
+        })?;
+
+        match users
+            .filter(username.eq(username_query))
+            .first::<Users>(&mut conn)
+            .await
+        {
+            Ok(value) => Ok(Some(value)),
+            Err(Error::NotFound) => Ok(None),
+            Err(e) => Err(e),
+        }
     }
 
     pub async fn search_by_email(&self, email_query: &str) -> Result<Option<Users>, Error> {
