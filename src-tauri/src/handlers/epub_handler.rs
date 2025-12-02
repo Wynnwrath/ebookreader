@@ -2,6 +2,7 @@ use base64::{engine::general_purpose, Engine as _};
 use rbook::{prelude::*, Ebook, Epub};
 use regex::Regex;
 use scraper::{Html, Selector};
+use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 use tokio::{fs, task::JoinError};
 use walkdir::WalkDir;
@@ -17,6 +18,7 @@ pub struct BookMetadata {
     pub isbn: Option<String>,
     pub file_path: String,
     pub cover_data: Option<(Vec<u8>, String)>, // (data, mime_type)
+    pub checksum: String,
 }
 
 // TODO: Test this function
@@ -47,6 +49,8 @@ pub async fn scan_epubs<P: AsRef<Path> + Send + 'static>(
 pub async fn parse_epub_meta(
     path: String,
 ) -> Result<BookMetadata, Box<dyn std::error::Error + Send + Sync>> {
+    let checksum = compute_checksum(&path).await?;
+    
     tokio::task::spawn_blocking(move || {
         let book = Epub::open(&path)?;
         let metadata = book.metadata();
@@ -96,11 +100,13 @@ pub async fn parse_epub_meta(
             isbn,
             file_path: path,
             cover_data,
+            checksum,
         })
     })
     .await?
 }
 
+// TODO: Test this function
 /// Stores a cover image to disk and returns the path.
 /// The cover is stored in a `covers` subdirectory of the current working directory.
 pub async fn store_cover_to_disk(
@@ -194,4 +200,128 @@ pub async fn get_epub_content(
     })
     .await?
     .map_err(|e: String| e.into())
+}
+/// Stores metadata to disk as a JSON file alongside the EPUB file.
+/// Returns the path to the created metadata JSON file.
+pub async fn store_metadata_to_disk(
+    metadata: &BookMetadata,
+) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    let epub_path = Path::new(&metadata.file_path);
+    let json_path = epub_path.with_extension("json");
+
+    let metadata_json = serde_json::json!({
+        "title": metadata.title,
+        "authors": metadata.authors,
+        "publishers": metadata.publishers,
+        "published_date": metadata.published_date,
+        "isbn": metadata.isbn,
+        "file_path": metadata.file_path,
+        "checksum": metadata.checksum,
+        "has_cover": metadata.cover_data.is_some(),
+    });
+
+    let json_string = serde_json::to_string_pretty(&metadata_json)?;
+    fs::write(&json_path, json_string).await?;
+
+    Ok(json_path.to_string_lossy().to_string())
+}
+
+/// Computes the SHA-256 checksum of a file and returns it as a hex string.
+pub async fn compute_checksum(path: &str) -> Result<String, std::io::Error> {
+    let data = fs::read(path).await?;
+    let hash = Sha256::digest(&data);
+    Ok(format!("{:x}", hash))
+}
+
+/// Extracts fonts from an EPUB file and stores them to disk.
+/// Returns a vector of paths to the extracted font files.
+pub async fn extract_fonts_to_disk(
+    path: &str,
+    output_dir: &str,
+) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
+    let path_str = path.to_string();
+    let output_dir_str = output_dir.to_string();
+
+    tokio::task::spawn_blocking(move || {
+        let epub = Epub::open(&path_str).map_err(|e| e.to_string())?;
+        let mut extracted_fonts: Vec<String> = Vec::new();
+
+        let font_dir = PathBuf::from(&output_dir_str);
+        std::fs::create_dir_all(&font_dir).map_err(|e| e.to_string())?;
+
+        // Iterate over manifest entries using IntoIterator
+        for resource in &epub.manifest() {
+            let resource_kind = resource.resource_kind();
+            let mime_type = resource_kind.as_str();
+            // Check for common font MIME types
+            if mime_type.contains("font")
+                || mime_type == "application/vnd.ms-opentype"
+                || mime_type == "application/x-font-ttf"
+                || mime_type == "application/x-font-otf"
+                || mime_type == "application/font-woff"
+                || mime_type == "application/font-woff2"
+            {
+                if let Ok(font_bytes) = resource.read_bytes() {
+                    let href = resource.href().as_str();
+                    let font_filename = Path::new(href)
+                        .file_name()
+                        .map(|f| f.to_string_lossy().to_string())
+                        .unwrap_or_else(|| format!("font_{}", resource.id()));
+
+                    let font_path = font_dir.join(&font_filename);
+                    if std::fs::write(&font_path, font_bytes).is_ok() {
+                        extracted_fonts.push(font_path.to_string_lossy().to_string());
+                    }
+                }
+            }
+        }
+
+        Ok(extracted_fonts)
+    })
+    .await?
+    .map_err(|e: String| e.into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_get_epub_content() {
+        let path = "Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.epub";
+        let result = get_epub_content(path).await;
+        assert!(result.is_ok(), "Failed to get epub content: {:?}", result.err());
+        let content = result.unwrap();
+        assert!(!content.is_empty(), "Content should not be empty");
+    }
+
+    #[tokio::test]
+    async fn test_parse_epub_meta() {
+        let path = "Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.epub".to_string();
+        let result = parse_epub_meta(path).await;
+        assert!(result.is_ok(), "Failed to parse epub metadata: {:?}", result.err());
+        let metadata = result.unwrap();
+        assert!(!metadata.title.is_empty(), "Title should not be empty");
+        assert!(!metadata.checksum.is_empty(), "Checksum should not be empty");
+    }
+
+    #[tokio::test]
+    async fn test_scan_epubs() {
+        let result = scan_epubs(".").await;
+        assert!(result.is_ok(), "Failed to scan epubs: {:?}", result.err());
+        let paths = result.unwrap();
+        assert!(
+            paths.iter().any(|p| p.extension().map(|e| e == "epub").unwrap_or(false)),
+            "Should find at least one epub file"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_compute_checksum() {
+        let path = "Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.epub";
+        let result = compute_checksum(path).await;
+        assert!(result.is_ok(), "Failed to compute checksum: {:?}", result.err());
+        let checksum = result.unwrap();
+        assert_eq!(checksum.len(), 64, "SHA-256 checksum should be 64 hex characters");
+    }
 }

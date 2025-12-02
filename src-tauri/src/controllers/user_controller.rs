@@ -50,10 +50,10 @@ pub async fn create_user(Json(user): Json<NewUserDTO>) -> impl IntoResponse {
         }
     }
 
-    return Response::builder()
+    Response::builder()
         .status(StatusCode::CREATED)
         .body(Body::from("User created"))
-        .unwrap();
+        .unwrap()
 }
 
 /// List all users - for testing purposes

@@ -3,7 +3,6 @@ pub mod authors;
 pub mod book_authors;
 pub mod bookmarks;
 pub mod books;
-pub mod libraries;
 pub mod publishers;
 pub mod reading_progress;
 pub mod schema;

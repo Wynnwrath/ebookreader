@@ -52,6 +52,7 @@ diesel::table! {
         file_type -> Nullable<Text>,
         file_path -> Nullable<Text>,
         cover_image_path -> Nullable<Text>,
+        checksum -> Nullable<Text>,
         added_at -> Nullable<Text>,
     }
 }

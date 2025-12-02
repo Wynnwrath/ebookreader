@@ -61,6 +61,28 @@ async fn create_test_book(title_val: &str, publisher_id_val: i32) -> Result<(), 
         file_type: None,
         file_path: None,
         cover_image_path: None,
+        checksum: None,
+    };
+
+    repo.add(new_book).await
+}
+
+/// Helper function to create a test book with checksum
+async fn create_test_book_with_checksum(
+    title_val: &str,
+    publisher_id_val: i32,
+    checksum_val: &str,
+) -> Result<(), Error> {
+    let repo = BookRepo::new().await;
+    let new_book = NewBook {
+        title: title_val,
+        publisher_id: Some(publisher_id_val),
+        published_date: None,
+        isbn: None,
+        file_type: None,
+        file_path: None,
+        cover_image_path: None,
+        checksum: Some(checksum_val),
     };
 
     repo.add(new_book).await
@@ -146,6 +168,7 @@ async fn test_update_book() {
         file_type: None,
         file_path: None,
         cover_image_path: None,
+        checksum: None,
     };
     let result = repo.update(book_id, form).await;
     assert!(result.is_ok());
@@ -230,4 +253,63 @@ async fn test_search_book_by_publisher() {
     assert_eq!(results.len(), 2);
     assert!(results.iter().any(|b| b.title == "Book 1"));
     assert!(results.iter().any(|b| b.title == "Book 3"));
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_search_book_by_checksum() {
+    setup().await.expect("Failed to set up test");
+    let publisher_id = create_test_publisher("Test Publisher").await;
+
+    let checksum = "abc123def456";
+    create_test_book_with_checksum("Test Book", publisher_id, checksum)
+        .await
+        .unwrap();
+
+    let repo = BookRepo::new().await;
+    let result = repo
+        .search_by_checksum(checksum)
+        .await
+        .expect("Failed to search by checksum");
+
+    assert!(result.is_some());
+    let found_book = result.unwrap();
+    assert_eq!(found_book.title, "Test Book");
+    assert_eq!(found_book.checksum, Some(checksum.to_string()));
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_search_book_by_checksum_nonexistent() {
+    setup().await.expect("Failed to set up test");
+
+    let repo = BookRepo::new().await;
+    let result = repo
+        .search_by_checksum("nonexistent_checksum")
+        .await
+        .expect("Failed to execute search_by_checksum");
+
+    assert!(result.is_none());
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_create_book_with_checksum() {
+    setup().await.expect("Failed to set up test");
+    let publisher_id = create_test_publisher("Test Publisher").await;
+
+    let title = "Book With Checksum";
+    let checksum = "sha256_test_hash_value";
+    create_test_book_with_checksum(title, publisher_id, checksum)
+        .await
+        .expect("Failed to create test book with checksum");
+
+    let repo = BookRepo::new().await;
+    let books = repo.get_all().await.expect("Failed to get books");
+
+    assert!(books.is_some());
+    let books_vec = books.unwrap();
+    assert_eq!(books_vec.len(), 1);
+    assert_eq!(books_vec[0].title, title);
+    assert_eq!(books_vec[0].checksum, Some(checksum.to_string()));
 }

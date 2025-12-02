@@ -65,6 +65,7 @@ impl UserLibraryRepo {
                 books::file_type,
                 books::file_path,
                 books::cover_image_path,
+                books::checksum,
                 books::added_at,
             ))
             .load::<Books>(&mut conn)

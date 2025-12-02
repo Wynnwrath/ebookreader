@@ -83,6 +83,27 @@ impl BookRepo {
             Err(e) => Err(e),
         };
     }
+
+    pub async fn search_by_checksum(&self, checksum_query: &str) -> Result<Option<Books>, Error> {
+        use crate::data::models::schema::books::dsl::*;
+
+        let mut conn = connect_from_pool().await.map_err(|e| {
+            Error::DatabaseError(
+                DatabaseErrorKind::UnableToSendCommand,
+                Box::new(e.to_string()),
+            )
+        })?;
+
+        match books
+            .filter(checksum.eq(checksum_query))
+            .first::<Books>(&mut conn)
+            .await
+        {
+            Ok(value) => Ok(Some(value)),
+            Err(Error::NotFound) => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
 }
 
 #[async_trait]

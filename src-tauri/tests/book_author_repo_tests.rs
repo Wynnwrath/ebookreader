@@ -80,6 +80,7 @@ async fn create_test_book(title_val: &str, publisher_id_val: i32) -> i32 {
         file_type: None,
         file_path: None,
         cover_image_path: None,
+        checksum: None,
     };
     repo.add(new_book)
         .await

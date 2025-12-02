@@ -15,6 +15,7 @@ pub struct Books {
     pub file_type: Option<String>,
     pub file_path: Option<String>,
     pub cover_image_path: Option<String>,
+    pub checksum: Option<String>,
     pub added_at: Option<String>,
 }
 
@@ -28,6 +29,7 @@ pub struct NewBook<'a> {
     pub file_type: Option<&'a str>,
     pub file_path: Option<&'a str>,
     pub cover_image_path: Option<&'a str>,
+    pub checksum: Option<&'a str>,
 }
 
 #[derive(AsChangeset, PartialEq, Debug)]
@@ -40,4 +42,5 @@ pub struct UpdateBook<'a> {
     pub file_type: Option<&'a str>,
     pub file_path: Option<&'a str>,
     pub cover_image_path: Option<&'a str>,
+    pub checksum: Option<&'a str>,
 }

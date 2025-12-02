@@ -205,3 +205,69 @@ async fn test_get_all_users_multiple() {
         assert_eq!(user.password_hash, passwords[i]);
     }
 }
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_search_by_username_exact() {
+    setup().await.expect("Failed to set up test");
+
+    let username = "exactuser";
+    let email = "exact@example.com";
+    let password = "exactpass123";
+    let role = "user";
+
+    create_test_user(username, email, password, Some(role))
+        .await
+        .expect("Failed to create test user");
+
+    let repo = UserRepo::new().await;
+    let user = repo
+        .search_by_username_exact(username)
+        .await
+        .expect("Failed to search by exact username");
+
+    assert!(user.is_some());
+    let found_user = user.unwrap();
+    assert_eq!(found_user.username, username);
+    assert_eq!(found_user.email, email);
+    assert_eq!(found_user.password_hash, password);
+    assert_eq!(found_user.role, Some(role.to_string()));
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_search_by_username_exact_nonexistent() {
+    setup().await.expect("Failed to set up test");
+
+    let repo = UserRepo::new().await;
+    let user = repo
+        .search_by_username_exact("nonexistentuser")
+        .await
+        .expect("Failed to execute search_by_username_exact");
+
+    assert!(user.is_none());
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_search_by_username_exact_partial_match_fails() {
+    setup().await.expect("Failed to set up test");
+
+    let username = "fullname";
+    let email = "full@example.com";
+    let password = "fullpass123";
+
+    create_test_user(username, email, password, None)
+        .await
+        .expect("Failed to create test user");
+
+    let repo = UserRepo::new().await;
+
+    // Searching for partial username should return None (exact match only)
+    let user = repo
+        .search_by_username_exact("full")
+        .await
+        .expect("Failed to execute search_by_username_exact");
+
+    assert!(user.is_none());
+}
