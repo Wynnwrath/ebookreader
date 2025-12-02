@@ -210,3 +210,4 @@ pub async fn compute_checksum(path: &str) -> Result<String, std::io::Error> {
     let hash = Sha256::digest(&data);
     Ok(format!("{:x}", hash))
 }
+// TODO: Add function to extract fonts(if any) from EPUB files and store them to disk

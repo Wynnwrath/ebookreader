@@ -39,3 +39,7 @@ pub async fn book_exists_by_checksum(checksum: &str) -> Result<bool, Error> {
     let repo = BookRepo::new().await;
     Ok(repo.search_by_checksum(checksum).await?.is_some())
 }
+
+// TODO: Add extract HTML content service function which extracts and returns HTML content from ebook file
+// TODO: Add bookmark functionality service function
+// TODO: Add annotate functionality service function which allows users to add annotations to books
