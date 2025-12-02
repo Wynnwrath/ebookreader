@@ -2,6 +2,7 @@ use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 
 use argon2::password_hash::{self, rand_core::OsRng, SaltString};
 use tokio::task;
+use crate::data::repos::implementors::user_repo::UserRepo;
 
 pub struct AuthenticationService;
 
@@ -80,5 +81,23 @@ impl AuthenticationService {
         let hashed = self.hash_password_async(password).await?;
         self.verify_password_async(password, &hashed).await?;
         Ok(hashed)
+    }
+
+    pub async fn authenticate_user(
+        &self,
+        username: &str,
+        password: &str,
+    ) -> Result<bool, password_hash::Error> {
+        let repo = UserRepo::new().await;
+
+        match repo.search_by_username_exact(username).await {
+            Ok(Some(user)) => {
+                let is_valid = self.verify_password(password, &user.password_hash)?;
+                Ok(is_valid)
+            }
+            Ok(None) => Ok(false), // User not found
+            Err(e) => Err(password_hash::Error::Password), // Map repo errors to password errors
+        }
+        .map_err(|_| password_hash::Error::Password) // Propagate errors
     }
 }
