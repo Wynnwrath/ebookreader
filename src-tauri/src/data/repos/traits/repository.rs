@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-// TODO: Make repo operations use this trait
+
 #[async_trait]
 pub trait Repository {
     type Item;

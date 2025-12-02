@@ -88,7 +88,7 @@ impl UserRepo {
             Err(e) => Err(e),
         }
     }
-    // TODO: Test this function
+
     pub async fn search_by_username_exact(&self, username_query: &str) -> Result<Option<Users>, Error> {
         use crate::data::models::schema::users::dsl::*;
 
