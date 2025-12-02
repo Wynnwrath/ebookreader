@@ -44,10 +44,7 @@ impl ReadingProgressRepo {
         }
     }
     /// Upsert reading progress for a user and book
-    pub async fn upsert<'a>(
-        &self,
-        progress: NewReadingProgress<'a>,
-    ) -> Result<(), Error> {
+    pub async fn upsert<'a>(&self, progress: NewReadingProgress<'a>) -> Result<(), Error> {
         use crate::data::models::schema::reading_progress::dsl::*;
         use chrono::Utc;
 
@@ -67,10 +64,7 @@ impl ReadingProgressRepo {
             async move {
                 diesel::insert_into(reading_progress)
                     .values(&progress)
-                    .on_conflict((
-                        user_id,
-                        book_id,
-                    ))
+                    .on_conflict((user_id, book_id))
                     .do_update()
                     .set((
                         current_position.eq(progress.current_position),

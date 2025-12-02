@@ -40,7 +40,10 @@ impl Tokenizer {
         )
     }
     // TODO: Test this async function
-    pub async fn generate_token_async(&self, user_id: i32) -> Result<String, jsonwebtoken::errors::Error> {
+    pub async fn generate_token_async(
+        &self,
+        user_id: i32,
+    ) -> Result<String, jsonwebtoken::errors::Error> {
         let secret_key = self.secret_key.clone();
         let expiration_duration = self.expiration_duration;
 
@@ -62,7 +65,7 @@ impl Tokenizer {
             )
         })
         .await
-        .unwrap()// Propagate panics from the spawned task
+        .unwrap() // Propagate panics from the spawned task
     }
 
     pub fn decode_token(&self, token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {

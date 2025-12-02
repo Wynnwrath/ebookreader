@@ -165,3 +165,4 @@ pub async fn update_annotation(
 
     repo.update(annotation_id, update).await
 }
+//TODO: Add add_book_from_file function to handle adding books directly from file paths

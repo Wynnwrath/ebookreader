@@ -14,7 +14,7 @@ use stellaron_lib::handlers::epub_handler::{
     store_cover_to_disk, store_metadata_to_disk,
 };
 use stellaron_lib::services::book_service::{
-    add_annotation, add_bookmark, add_book_from_metadata, book_exists_by_checksum,
+    add_annotation, add_book_from_metadata, add_bookmark, book_exists_by_checksum,
     delete_annotation, delete_bookmark, extract_book_html_content, get_annotations, get_bookmarks,
     update_annotation,
 };
@@ -107,11 +107,7 @@ async fn create_test_book_with_path(title_val: &str, file_path_val: &str) -> i32
         .await
         .expect("Failed to create test book");
     let books = repo.get_all().await.expect("Failed to get books").unwrap();
-    books
-        .iter()
-        .find(|b| b.title == title_val)
-        .unwrap()
-        .book_id
+    books.iter().find(|b| b.title == title_val).unwrap().book_id
 }
 
 // ======================= epub_handler tests =======================
@@ -122,10 +118,11 @@ async fn test_scan_epubs_finds_test_file() {
     assert!(result.is_ok(), "Failed to scan epubs: {:?}", result.err());
     let paths = result.unwrap();
     assert!(
-        paths
-            .iter()
-            .any(|p| p.file_name().map(|f| f.to_str().unwrap_or("")).unwrap_or("")
-                == "Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.epub"),
+        paths.iter().any(|p| p
+            .file_name()
+            .map(|f| f.to_str().unwrap_or(""))
+            .unwrap_or("")
+            == "Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.epub"),
         "Should find the test epub file"
     );
 }
@@ -222,11 +219,7 @@ async fn test_store_cover_to_disk() {
 
     if let Some((cover_data, mime_type)) = &metadata.cover_data {
         let result = store_cover_to_disk(cover_data, mime_type, &metadata.title).await;
-        assert!(
-            result.is_ok(),
-            "Failed to store cover: {:?}",
-            result.err()
-        );
+        assert!(result.is_ok(), "Failed to store cover: {:?}", result.err());
 
         let cover_path = result.unwrap();
         let path = std::path::Path::new(&cover_path);
@@ -360,7 +353,14 @@ async fn test_add_and_get_bookmark() {
     let book_id = create_test_book_with_path("Bookmark Test Book", TEST_EPUB_PATH).await;
 
     // Add a bookmark
-    let result = add_bookmark(user_id, book_id, "chapter1:100", Some("Chapter 1"), Some(10)).await;
+    let result = add_bookmark(
+        user_id,
+        book_id,
+        "chapter1:100",
+        Some("Chapter 1"),
+        Some(10),
+    )
+    .await;
     assert!(result.is_ok(), "Failed to add bookmark: {:?}", result.err());
 
     // Retrieve the bookmark
@@ -372,7 +372,10 @@ async fn test_add_and_get_bookmark() {
     let bookmarks_vec = bookmarks.unwrap();
     assert_eq!(bookmarks_vec.len(), 1);
     assert_eq!(bookmarks_vec[0].position, "chapter1:100");
-    assert_eq!(bookmarks_vec[0].chapter_title, Some("Chapter 1".to_string()));
+    assert_eq!(
+        bookmarks_vec[0].chapter_title,
+        Some("Chapter 1".to_string())
+    );
     assert_eq!(bookmarks_vec[0].page_number, Some(10));
 }
 

@@ -1,8 +1,8 @@
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 
+use crate::data::repos::implementors::user_repo::UserRepo;
 use argon2::password_hash::{self, rand_core::OsRng, SaltString};
 use tokio::task;
-use crate::data::repos::implementors::user_repo::UserRepo;
 
 pub struct AuthenticationService;
 
@@ -41,7 +41,10 @@ impl AuthenticationService {
         Ok(hash)
     }
 
-    pub async fn hash_password_async(&self, password: &str) -> Result<String, password_hash::Error> {
+    pub async fn hash_password_async(
+        &self,
+        password: &str,
+    ) -> Result<String, password_hash::Error> {
         let password = password.to_string();
         task::spawn_blocking(move || {
             let argon2 = Argon2::default();
@@ -77,7 +80,10 @@ impl AuthenticationService {
         .map_err(|_| password_hash::Error::Password)? // Propagate panics from the spawned task
     }
 
-    pub async fn hash_and_verify_async(&self, password: &str) -> Result<String, password_hash::Error> {
+    pub async fn hash_and_verify_async(
+        &self,
+        password: &str,
+    ) -> Result<String, password_hash::Error> {
         let hashed = self.hash_password_async(password).await?;
         self.verify_password_async(password, &hashed).await?;
         Ok(hashed)
@@ -95,8 +101,8 @@ impl AuthenticationService {
                 let is_valid = self.verify_password(password, &user.password_hash)?;
                 Ok(is_valid)
             }
-            Ok(None) => Ok(false), // User not found
-            Err(e) => Err(password_hash::Error::Password), // Map repo errors to password errors
+            Ok(None) => Ok(false),                         // User not found
+            Err(_) => Err(password_hash::Error::Password), // Map repo errors to password errors
         }
         .map_err(|_| password_hash::Error::Password) // Propagate errors
     }
