@@ -281,3 +281,21 @@ pub async fn extract_fonts_to_disk(
     .await?
     .map_err(|e: String| e.into())
 }
+// TODO: Test this function
+/// Exports the combined HTML content of an EPUB file to disk.
+pub async fn export_epub_contents_to_disk(
+    epub_path: &str,
+    output_dir: &str,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let epub_path_str = epub_path.to_string();
+    let output_dir_str = output_dir.to_string();
+
+    let contents = get_epub_content(&epub_path_str).await?;
+
+    let output_path = Path::new(&output_dir_str).join("extracted_content.html");
+
+    fs::create_dir_all(&output_dir_str).await?;
+    fs::write(output_path, contents).await?;
+
+    Ok(())
+}
