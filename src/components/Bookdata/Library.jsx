@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import BookHistory from "./BookHIstory";
+import BookHistory from "./BookHistory";
 import BookSlider from "./BookSlider";
 
 /**
