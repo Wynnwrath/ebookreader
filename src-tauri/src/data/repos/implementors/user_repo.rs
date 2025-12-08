@@ -89,7 +89,10 @@ impl UserRepo {
         }
     }
 
-    pub async fn search_by_username_exact(&self, username_query: &str) -> Result<Option<Users>, Error> {
+    pub async fn search_by_username_exact(
+        &self,
+        username_query: &str,
+    ) -> Result<Option<Users>, Error> {
         use crate::data::models::schema::users::dsl::*;
 
         let mut conn = connect_from_pool().await.map_err(|e| {

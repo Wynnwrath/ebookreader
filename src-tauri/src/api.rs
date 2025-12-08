@@ -57,7 +57,14 @@ pub fn start() {
 
         println!("Starting server on {}", addr);
 
-        match axum::serve(TcpListener::bind(addr).await.expect("Failed to bind on address"), api).await {
+        match axum::serve(
+            TcpListener::bind(addr)
+                .await
+                .expect("Failed to bind on address"),
+            api,
+        )
+        .await
+        {
             Ok(_) => (),
             Err(e) => eprintln!("Error starting server: {}", e),
         }
