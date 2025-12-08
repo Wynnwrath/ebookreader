@@ -2,6 +2,14 @@ import StarRate from '../assets/StarRate';
 import ebookCover from '../images/bookCover.png';
 
 export default function LastRead() {
+
+  const handleContinueReading = () => {
+  console.log("[LastRead] READ TODAY clicked");
+  // later:
+  // navigate(`/reader/${bookId}`);
+  // invoke("continue_reading", { bookId });
+  };
+
   return (
     <div className="[grid-area: last] p-4 sm:p-6 lg:p-8 flex justify-center items-center h-full">
       {/* Outer Card */}
@@ -73,6 +81,7 @@ export default function LastRead() {
                 w-full sm:w-auto max-w-[200px]
                 transition-colors active:bg-gray-700 duration-150
               "
+              onClick={handleContinueReading}
             >
               READ TODAY
             </button>

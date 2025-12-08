@@ -2,15 +2,20 @@ import { useState, useEffect } from "react";
 import BookCard from "./BookCard";
 import { SlArrowRight, SlArrowLeft } from "react-icons/sl";
 
-{/* BookSlider Component: Displays a horizontal paginated carousel of books */}
-export default function BookSlider({ books, title }) {
-  {/* Current page index of the slider */}
+/**
+ * BookSlider Component
+ * - Displays a horizontal, paginated carousel of books.
+ * - Accepts an optional `onBookClick(book)` callback so parents
+ *   can handle navigation or backend actions (e.g., open reader).
+ */
+export default function BookSlider({ books = [], title, onBookClick }) {
+  // Current page index of the slider
   const [currentPage, setCurrentPage] = useState(0);
 
-  {/* How many books are visible at once depending on screen size */}
+  // How many books are visible at once depending on screen size
   const [visibleCount, setVisibleCount] = useState(10);
 
-  {/* Adjust visible book count when the window is resized */}
+  // Adjust visible book count when the window is resized
   useEffect(() => {
     const updateVisibleCount = () => {
       if (window.innerWidth < 640) setVisibleCount(2); // Mobile view
@@ -21,22 +26,52 @@ export default function BookSlider({ books, title }) {
     updateVisibleCount();
     window.addEventListener("resize", updateVisibleCount);
 
-    {/* Cleanup on unmount */}
+    // Cleanup on unmount
     return () => window.removeEventListener("resize", updateVisibleCount);
   }, []);
 
-  {/* Calculate total pagination pages */}
-  const totalPages = Math.ceil(books.length / visibleCount);
+  // Calculate total pagination pages
+  const totalPages =
+    visibleCount > 0 ? Math.ceil(books.length / visibleCount) : 0;
 
-  {/* Determine which books should be displayed for the current page */}
+  // Ensure currentPage is within bounds when books/visibleCount change
+  useEffect(() => {
+    if (totalPages === 0) {
+      setCurrentPage(0);
+      return;
+    }
+
+    setCurrentPage((prev) => {
+      if (prev >= totalPages) return totalPages - 1;
+      if (prev < 0) return 0;
+      return prev;
+    });
+  }, [totalPages]);
+
+  // Determine which books should be displayed for the current page
   const startIndex = currentPage * visibleCount;
   const visibleBooks = books.slice(startIndex, startIndex + visibleCount);
 
-  {/* Navigate forward with looping */}
-  const handleNext = () => setCurrentPage((prev) => (prev + 1) % totalPages);
+  // Navigate forward with looping (only if more than 1 page)
+  const handleNext = () => {
+    if (totalPages <= 1) return;
+    setCurrentPage((prev) => (prev + 1) % totalPages);
+  };
 
-  {/* Navigate backward with looping */}
-  const handlePrev = () => setCurrentPage((prev) => (prev - 1 + totalPages) % totalPages);
+  // Navigate backward with looping (only if more than 1 page)
+  const handlePrev = () => {
+    if (totalPages <= 1) return;
+    setCurrentPage((prev) => (prev - 1 + totalPages) % totalPages);
+  };
+
+  // Handle book clicks and forward to parent if provided
+  const handleBookClick = (book) => {
+    if (onBookClick) {
+      onBookClick(book);
+    } else {
+      console.log("[BookSlider] Clicked book:", book);
+    }
+  };
 
   return (
     <div className="relative w-full h-full p-6 pt-0">
@@ -77,7 +112,11 @@ export default function BookSlider({ books, title }) {
       {/* Row of currently visible books */}
       <div className="flex gap-2 sm:gap-4 overflow-hidden px-10">
         {visibleBooks.map((book, index) => (
-          <BookCard key={index} {...book} />
+          <BookCard
+            key={index}
+            {...book}
+            onClick={handleBookClick} // forward clicks up with full book info
+          />
         ))}
       </div>
     </div>

@@ -24,7 +24,7 @@ export default function HeaderRight() {
   // For web app — try closing the window
   const handleExit = () => {
     if (window.confirm("Are you sure you want to exit the app?")) {
-      appWindow.close()
+      appWindow.close();
     }
   };
 

@@ -15,12 +15,14 @@ export default function BookHeader({ onBack, onMenu }) {
       </button>
 
       {/* Options Menu */}
-      <button
-        onClick={onMenu}
-        className="text-white hover:text-orange-400 transition-colors"
-      >
-        <SlOptionsVertical size={22} />
-      </button>
+      {onMenu && (
+        <button
+          onClick={onMenu}
+          className="text-white hover:text-orange-400 transition-colors"
+        >
+          <SlOptionsVertical size={22} />
+        </button>
+      )}
     </GlassCard>
   );
 }
