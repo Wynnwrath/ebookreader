@@ -18,6 +18,7 @@ export default function Header() {
           <input
             type="text"
             placeholder="Search"
+            onChange={(e) => console.log("[Search] Query:", e.target.value)}
             className="
               w-full p-2 pl-10 rounded-full 
               bg-white/10 text-white placeholder-stellar-dim 

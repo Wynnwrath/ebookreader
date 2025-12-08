@@ -26,7 +26,7 @@ export default function RootLayout() {
         bg-cover bg-center bg-no-repeat
       `}
       style={{
-        backgroundImage: `url(${stellarbg})`, // ✅ GIF background
+        backgroundImage: `url(${stellarbg})`,
       }}
     >
       {/* Header */}
