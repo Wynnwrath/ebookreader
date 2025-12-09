@@ -41,6 +41,7 @@ regex = "1.12.2"
 rbook = { version = "0.6.6", features = ["threadsafe"] }
 sha2 = "0.10"
 uuid = { version = "1.18.1", features = ["v4"] }
+tauri-plugin-dialog = "2.4.2"
 
 # 👇 Force bundled SQLite
 [dependencies.libsqlite3-sys]
