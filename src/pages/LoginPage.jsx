@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import stellarbg from "../assets/images/stellarbg.gif";
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/600.css";
+import { invoke } from '@tauri-apps/api/core';
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -12,7 +13,7 @@ function LoginPage() {
 
   const [error, setError] = useState("");
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
 
     const username = e.target.username.value.trim();
@@ -23,6 +24,10 @@ function LoginPage() {
     } else {
       setError("Invalid username or password.");
     }
+  }
+
+  function handleClick(e) {
+    navigate("/register");
   }
 
   return (
@@ -39,7 +44,7 @@ function LoginPage() {
           STELLARON
         </h1>
 
-        <form onSubmit={handleSubmit} className="flex flex-col space-y-4">
+        <form onSubmit={handleSubmit} onClick={handleClick} className="flex flex-col space-y-4">
           <input
             type="text"
             name="username"
@@ -63,7 +68,7 @@ function LoginPage() {
               Login
             </button>
             <button
-              type="button"
+              type="click"
               className="w-full bg-blue-500/80 hover:bg-blue-600 text-white font-semibold py-2 rounded-lg transition"
             >
               Register
