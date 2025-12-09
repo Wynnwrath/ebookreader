@@ -97,9 +97,6 @@ impl Repository for PublisherRepo {
             )
         })?;
 
-        let db_lock = lock_db();
-        let _guard: MutexGuard<()> = db_lock.lock().await;
-
         match conn
             .transaction(|connection| {
                 async move {
@@ -129,9 +126,6 @@ impl Repository for PublisherRepo {
             )
         })?;
 
-        let db_lock = lock_db();
-        let _guard: MutexGuard<()> = db_lock.lock().await;
-
         match conn
             .transaction(|connection| {
                 async move {
@@ -160,9 +154,6 @@ impl Repository for PublisherRepo {
                 Box::new(e.to_string()),
             )
         })?;
-
-        let db_lock = lock_db();
-        let _guard: MutexGuard<()> = db_lock.lock().await;
 
         match conn
             .transaction(|connection| {

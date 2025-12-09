@@ -103,9 +103,6 @@ impl Repository for BookmarkRepo {
             )
         })?;
 
-        let db_lock = lock_db();
-        let _guard: MutexGuard<()> = db_lock.lock().await;
-
         conn.transaction(|connection| {
             async move {
                 diesel::insert_into(bookmarks)
@@ -129,9 +126,6 @@ impl Repository for BookmarkRepo {
             )
         })?;
 
-        let db_lock = lock_db();
-        let _guard: MutexGuard<()> = db_lock.lock().await;
-
         conn.transaction(|connection| {
             async move {
                 diesel::update(bookmarks.filter(bookmark_id.eq(id)))
@@ -154,9 +148,6 @@ impl Repository for BookmarkRepo {
                 Box::new(e.to_string()),
             )
         })?;
-
-        let db_lock = lock_db();
-        let _guard: MutexGuard<()> = db_lock.lock().await;
 
         conn.transaction(|connection| {
             async move {

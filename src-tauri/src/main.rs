@@ -5,8 +5,6 @@ use stellaron_lib::commands::{auth_command, book_commands, library_commands, met
 
 #[tokio::main]
 async fn main() {
-    stellaron_lib::api::start();
-
     run();
 }
 

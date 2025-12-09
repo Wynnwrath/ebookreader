@@ -55,9 +55,6 @@ impl ReadingProgressRepo {
             )
         })?;
 
-        let db_lock = lock_db();
-        let _guard: MutexGuard<()> = db_lock.lock().await;
-
         let now = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
 
         conn.transaction(|connection| {
@@ -161,9 +158,6 @@ impl Repository for ReadingProgressRepo {
             )
         })?;
 
-        let db_lock = lock_db();
-        let _guard: MutexGuard<()> = db_lock.lock().await;
-
         conn.transaction(|connection| {
             async move {
                 diesel::insert_into(reading_progress)
@@ -187,9 +181,6 @@ impl Repository for ReadingProgressRepo {
             )
         })?;
 
-        let db_lock = lock_db();
-        let _guard: MutexGuard<()> = db_lock.lock().await;
-
         conn.transaction(|connection| {
             async move {
                 diesel::update(reading_progress.filter(progress_id.eq(id)))
@@ -212,9 +203,6 @@ impl Repository for ReadingProgressRepo {
                 Box::new(e.to_string()),
             )
         })?;
-
-        let db_lock = lock_db();
-        let _guard: MutexGuard<()> = db_lock.lock().await;
 
         conn.transaction(|connection| {
             async move {

@@ -103,9 +103,6 @@ impl Repository for AnnotationRepo {
             )
         })?;
 
-        let db_lock = lock_db();
-        let _guard: MutexGuard<()> = db_lock.lock().await;
-
         conn.transaction(|connection| {
             async move {
                 diesel::insert_into(annotations)
@@ -129,9 +126,6 @@ impl Repository for AnnotationRepo {
             )
         })?;
 
-        let db_lock = lock_db();
-        let _guard: MutexGuard<()> = db_lock.lock().await;
-
         conn.transaction(|connection| {
             async move {
                 diesel::update(annotations.filter(annotation_id.eq(id)))
@@ -154,9 +148,6 @@ impl Repository for AnnotationRepo {
                 Box::new(e.to_string()),
             )
         })?;
-
-        let db_lock = lock_db();
-        let _guard: MutexGuard<()> = db_lock.lock().await;
 
         conn.transaction(|connection| {
             async move {

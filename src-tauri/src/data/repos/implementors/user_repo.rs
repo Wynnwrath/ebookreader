@@ -28,9 +28,6 @@ impl UserRepo {
             )
         })?;
 
-        let db_lock = lock_db();
-        let _guard: MutexGuard<()> = db_lock.lock().await;
-
         conn.transaction(|connection| {
             async move {
                 diesel::update(users.filter(user_id.eq(id)))
@@ -191,9 +188,6 @@ impl Repository for UserRepo {
             )
         })?;
 
-        let db_lock = lock_db();
-        let _guard: MutexGuard<()> = db_lock.lock().await;
-
         match conn
             .transaction(|connection| {
                 async move {
@@ -223,9 +217,6 @@ impl Repository for UserRepo {
             )
         })?;
 
-        let db_lock = lock_db();
-        let _guard: MutexGuard<()> = db_lock.lock().await;
-
         match conn
             .transaction(|connection| {
                 async move {
@@ -254,9 +245,6 @@ impl Repository for UserRepo {
                 Box::new(e.to_string()),
             )
         })?;
-
-        let db_lock = lock_db();
-        let _guard: MutexGuard<()> = db_lock.lock().await;
 
         match conn
             .transaction(|connection| {
