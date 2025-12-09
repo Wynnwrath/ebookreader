@@ -3,10 +3,9 @@ use diesel::prelude::*;
 use diesel::result::{DatabaseErrorKind, Error};
 use diesel_async::scoped_futures::ScopedFutureExt;
 use diesel_async::{AsyncConnection, RunQueryDsl};
-use tokio::sync::MutexGuard;
 
 use crate::data::{
-    database::{connect_from_pool, lock_db},
+    database::connect_from_pool,
     models::{
         books::Books,
         user_library::{NewUserLibrary, UserLibrary},
