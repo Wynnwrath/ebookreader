@@ -2,7 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use tauri::AppHandle;
-use stellaron_lib::commands::{auth_command, book_commands, library_commands, metadata_commands};
+use stellaron_lib::commands::*;
 
 #[tokio::main]
 async fn main() {
@@ -39,6 +39,8 @@ fn run() {
             // Auth Commands
             auth_command::login,
             auth_command::register,
+            // Account Commands
+            account_commands::get_account_info,
             // General Commands
             exit_app,
         ])
