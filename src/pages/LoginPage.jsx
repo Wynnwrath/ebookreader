@@ -8,9 +8,6 @@ import { invoke } from '@tauri-apps/api/core';
 function LoginPage() {
   const navigate = useNavigate();
 
-  const adminName = "admin";
-  const adminPassword = "admin123";
-
   const [error, setError] = useState("");
 
   async function handleSubmit(e) {
@@ -19,14 +16,16 @@ function LoginPage() {
     const username = e.target.username.value.trim();
     const password = e.target.password.value.trim();
 
-    if (username === adminName && password === adminPassword) {
+    const isValid = await invoke('login', {username: username, password: password})
+
+    if (isValid) {
       navigate("/home");
     } else {
       setError("Invalid username or password.");
     }
   }
 
-  function handleClick(e) {
+  function handleClick() {
     navigate("/register");
   }
 
@@ -44,7 +43,7 @@ function LoginPage() {
           STELLARON
         </h1>
 
-        <form onSubmit={handleSubmit} onClick={handleClick} className="flex flex-col space-y-4">
+        <form onSubmit={handleSubmit} className="flex flex-col space-y-4">
           <input
             type="text"
             name="username"
@@ -67,8 +66,8 @@ function LoginPage() {
             >
               Login
             </button>
-            <button
-              type="click"
+            <button onClick={handleClick}
+              type="button"
               className="w-full bg-blue-500/80 hover:bg-blue-600 text-white font-semibold py-2 rounded-lg transition"
             >
               Register
