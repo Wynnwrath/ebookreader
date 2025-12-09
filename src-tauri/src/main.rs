@@ -14,6 +14,8 @@ fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
             // Book Commands
             book_commands::import_book,
@@ -45,6 +47,6 @@ fn run() {
 }
 
 #[tauri::command]
-pub fn exit_app(app: AppHandle) {
+fn exit_app(app: AppHandle) {
     app.exit(0);
 }
