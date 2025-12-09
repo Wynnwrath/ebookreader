@@ -24,9 +24,7 @@ export default function HeaderRight() {
 
   // For web app — try closing the window
   const handleExit = async() => {
-    if (window.confirm("Are you sure you want to exit the app?")) {
-      await invoke('exit_app');
-    }
+    await invoke('exit_app');
   };
 
   // Dropdown menu items
