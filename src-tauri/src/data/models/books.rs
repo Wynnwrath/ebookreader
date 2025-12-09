@@ -2,7 +2,7 @@ use diesel::prelude::*;
 
 use crate::data::models::schema::*;
 
-#[derive(Queryable, Identifiable, Selectable, PartialEq, Debug)]
+#[derive(Queryable, Identifiable, Selectable, PartialEq, Debug, serde::Serialize)]
 #[diesel(table_name = books)]
 #[diesel(primary_key(book_id))]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]

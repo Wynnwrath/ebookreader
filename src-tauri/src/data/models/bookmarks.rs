@@ -1,7 +1,7 @@
 use crate::data::models::schema::*;
 use diesel::prelude::*;
 
-#[derive(Queryable, Identifiable, Selectable, PartialEq, Debug)]
+#[derive(Queryable, Identifiable, Selectable, PartialEq, Debug, serde::Serialize)]
 #[diesel(table_name = bookmarks)]
 #[diesel(primary_key(bookmark_id))]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]

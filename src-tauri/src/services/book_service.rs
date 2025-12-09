@@ -1,4 +1,3 @@
-use std::path::Path;
 use crate::data::models::annotations::NewAnnotation;
 use crate::data::models::bookmarks::NewBookmark;
 use crate::data::models::books::NewBook;
@@ -8,6 +7,7 @@ use crate::data::repos::implementors::bookmark_repo::BookmarkRepo;
 use crate::data::repos::traits::repository::Repository;
 pub(crate) use crate::handlers::epub_handler::{get_epub_content, scan_epubs, BookMetadata};
 use diesel::result::Error;
+use std::path::Path;
 
 /// Adds a new book to the database using the provided metadata.
 /// Returns Ok(()) if successful, or an error if the book already exists (by checksum).
@@ -177,6 +177,9 @@ pub async fn add_books_from_dir<P: AsRef<Path> + Send + 'static>(path: P) {
 }
 
 pub async fn add_book_from_file<P: AsRef<Path> + Send + 'static>(path: P) -> Result<(), Error> {
-    let metadata = crate::handlers::epub_handler::parse_epub_meta(path.as_ref().to_string_lossy().to_string()).await.unwrap();
+    let metadata =
+        crate::handlers::epub_handler::parse_epub_meta(path.as_ref().to_string_lossy().to_string())
+            .await
+            .unwrap();
     add_book_from_metadata(&metadata, None).await
 }
