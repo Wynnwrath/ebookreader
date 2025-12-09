@@ -9,7 +9,7 @@ use crate::data::models::schema::*;
 pub struct Users {
     pub user_id: i32,
     pub username: String,
-    pub email: String,
+    pub email: Option<String>,
     pub role: Option<String>,
     pub password_hash: String,
     pub created_at: Option<String>,
@@ -20,7 +20,7 @@ pub struct Users {
 #[diesel(table_name = users)]
 pub struct NewUser<'a> {
     pub username: &'a str,
-    pub email: &'a str,
+    pub email: Option<&'a str>,
     pub role: Option<&'a str>,
     pub password_hash: &'a str,
 }

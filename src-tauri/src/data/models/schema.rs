@@ -99,7 +99,7 @@ diesel::table! {
     users (user_id) {
         user_id -> Integer,
         username -> Text,
-        email -> Text,
+        email -> Nullable<Text>,
         role -> Nullable<Text>,
         password_hash -> Text,
         created_at -> Nullable<Text>,

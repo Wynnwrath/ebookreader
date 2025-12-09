@@ -6,7 +6,7 @@ impl From<NewUserDTO> for UserDTO {
     fn from(user: NewUserDTO) -> Self {
         UserDTO {
             username: user.username.to_string(),
-            email: user.email.to_string(),
+            email: user.email,
             created_at: user.created_at.map(|s| s.to_string()),
             role: user.role.map(|s| s.to_string()),
         }

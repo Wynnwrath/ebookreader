@@ -34,7 +34,7 @@ pub async fn create_user(Json(user): Json<NewUserDTO>) -> impl IntoResponse {
 
     let new_user = NewUser {
         username: &user.username,
-        email: &user.email,
+        email: user.email.as_deref(),
         role: user.role.as_deref(),
         password_hash: &hashed_password,
     };

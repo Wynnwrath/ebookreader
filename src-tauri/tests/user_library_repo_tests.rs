@@ -40,7 +40,7 @@ async fn create_test_user(username_val: &str) -> i32 {
     let repo = UserRepo::new().await;
     let new_user = NewUser {
         username: username_val,
-        email: &format!("{}@test.com", username_val),
+        email: Some(&format!("{}@test.com", username_val)),
         role: Some("user"),
         password_hash: "password",
     };

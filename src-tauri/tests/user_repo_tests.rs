@@ -39,7 +39,7 @@ async fn create_test_user(
     let repo = UserRepo::new().await;
     let new_user = NewUser {
         username: username_val,
-        email: email_val,
+        email: Some(email_val),
         password_hash: password_val,
         role: role_val,
     };
@@ -67,7 +67,7 @@ async fn test_create_user() {
     let users_vec = users.unwrap();
     assert_eq!(users_vec.len(), 1);
     assert_eq!(users_vec[0].username, username);
-    assert_eq!(users_vec[0].email, email);
+    assert_eq!(users_vec[0].email.as_deref(), Some(email));
     assert_eq!(users_vec[0].password_hash, password);
     assert_eq!(users_vec[0].role, Some(role.to_string()));
 }
@@ -108,7 +108,7 @@ async fn test_get_user_by_id() {
     assert!(user.is_some());
     let found_user = user.unwrap();
     assert_eq!(found_user.username, username);
-    assert_eq!(found_user.email, email);
+    assert_eq!(found_user.email.as_deref(), Some(email));
     assert_eq!(found_user.role, Some("admin".to_string()));
 }
 
@@ -151,7 +151,7 @@ async fn test_get_user_by_username() {
     assert_eq!(found_users.len(), 1);
     let found_user = &found_users[0];
     assert_eq!(found_user.username, username);
-    assert_eq!(found_user.email, email);
+    assert_eq!(found_user.email.as_deref(), Some(email));
 }
 
 #[tokio::test]
@@ -201,7 +201,7 @@ async fn test_get_all_users_multiple() {
         let user = users_vec.iter().find(|u| u.username == usernames[i]);
         assert!(user.is_some());
         let user = user.unwrap();
-        assert_eq!(user.email, emails[i]);
+        assert_eq!(user.email.as_deref(), Some(emails[i]));
         assert_eq!(user.password_hash, passwords[i]);
     }
 }
@@ -229,7 +229,7 @@ async fn test_search_by_username_exact() {
     assert!(user.is_some());
     let found_user = user.unwrap();
     assert_eq!(found_user.username, username);
-    assert_eq!(found_user.email, email);
+    assert_eq!(found_user.email.as_deref(), Some(email));
     assert_eq!(found_user.password_hash, password);
     assert_eq!(found_user.role, Some(role.to_string()));
 }
