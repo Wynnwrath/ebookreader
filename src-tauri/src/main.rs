@@ -34,6 +34,7 @@ fn run() {
             metadata_commands::fetch_metadata,
             metadata_commands::list_metadata,
             metadata_commands::update_metadata,
+            // Auth Commands
             auth_command::login,
             auth_command::register,
         ])
