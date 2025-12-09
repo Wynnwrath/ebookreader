@@ -1,3 +1,4 @@
+use std::path::Path;
 use crate::data::models::annotations::NewAnnotation;
 use crate::data::models::bookmarks::NewBookmark;
 use crate::data::models::books::NewBook;
@@ -5,7 +6,7 @@ use crate::data::repos::implementors::annotation_repo::AnnotationRepo;
 use crate::data::repos::implementors::book_repo::BookRepo;
 use crate::data::repos::implementors::bookmark_repo::BookmarkRepo;
 use crate::data::repos::traits::repository::Repository;
-use crate::handlers::epub_handler::{get_epub_content, BookMetadata};
+pub(crate) use crate::handlers::epub_handler::{get_epub_content, scan_epubs, BookMetadata};
 use diesel::result::Error;
 
 /// Adds a new book to the database using the provided metadata.
@@ -166,3 +167,16 @@ pub async fn update_annotation(
     repo.update(annotation_id, update).await
 }
 //TODO: Add add_book_from_file function to handle adding books directly from file paths
+// TODO: Test this function should add all epub files from a directory to local database
+pub async fn add_books_from_dir<P: AsRef<Path> + Send + 'static>(path: P) {
+    let epubs = scan_epubs(path).await.unwrap();
+
+    for path in epubs {
+        add_book_from_file(path).await.ok();
+    }
+}
+
+pub async fn add_book_from_file<P: AsRef<Path> + Send + 'static>(path: P) -> Result<(), Error> {
+    let metadata = crate::handlers::epub_handler::parse_epub_meta(path.as_ref().to_string_lossy().to_string()).await.unwrap();
+    add_book_from_metadata(&metadata, None).await
+}
