@@ -9,6 +9,11 @@
     "process:default",
     "dialog:default",
     "dialog:allow-open",
-    "dialog:allow-save"
+    "dialog:allow-save",
+    "fs:default",
+    {
+      "identifier": "fs:scope",
+      "allow": ["$HOME/**", "C:\\**"]
+    }
   ]
 }
