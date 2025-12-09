@@ -5,7 +5,8 @@ import RootLayout from "./layout/RootLayout";
 import HomePage from "./pages/HomePage";
 import LibraryPage from "./pages/LibraryPage";
 import LoginPage from "./pages/LoginPage";
-import BookPage from "./pages/BookPage";   
+import BookPage from "./pages/BookPage";
+import RegisterPage from "./pages/RegisterPage";
 import "./App.css";
 import "./theme.css";
 import PlainLayout from "./layout/PlainLayout";
@@ -17,6 +18,7 @@ function App() {
       {/* Login page */}
       <Route path="/" element={<LoginPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
 
       {/* No Header layout pages */}
       <Route element={<PlainLayout />}>

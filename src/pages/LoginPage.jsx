@@ -3,26 +3,30 @@ import { useNavigate } from "react-router-dom";
 import stellarbg from "../assets/images/stellarbg.gif";
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/600.css";
+import { invoke } from '@tauri-apps/api/core';
 
 function LoginPage() {
   const navigate = useNavigate();
 
-  const adminName = "admin";
-  const adminPassword = "admin123";
-
   const [error, setError] = useState("");
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
 
     const username = e.target.username.value.trim();
     const password = e.target.password.value.trim();
 
-    if (username === adminName && password === adminPassword) {
+    const isValid = await invoke('login', {username: username, password: password})
+
+    if (isValid) {
       navigate("/home");
     } else {
       setError("Invalid username or password.");
     }
+  }
+
+  function handleClick() {
+    navigate("/register");
   }
 
   return (
@@ -62,7 +66,7 @@ function LoginPage() {
             >
               Login
             </button>
-            <button
+            <button onClick={handleClick}
               type="button"
               className="w-full bg-blue-500/80 hover:bg-blue-600 text-white font-semibold py-2 rounded-lg transition"
             >
