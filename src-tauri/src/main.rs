@@ -1,6 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use tauri::AppHandle;
 use stellaron_lib::commands::{auth_command, book_commands, library_commands, metadata_commands};
 
 #[tokio::main]
@@ -36,7 +37,14 @@ fn run() {
             // Auth Commands
             auth_command::login,
             auth_command::register,
+            // General Commands
+            exit_app,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[tauri::command]
+pub fn exit_app(app: AppHandle) {
+    app.exit(0);
 }
