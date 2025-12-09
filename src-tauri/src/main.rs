@@ -1,7 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use stellaron_lib::commands::{book_commands, library_commands, metadata_commands};
+use stellaron_lib::commands::{auth_command, book_commands, library_commands, metadata_commands};
 
 #[tokio::main]
 async fn main() {
@@ -33,7 +33,9 @@ fn run() {
             // Metadata Commands
             metadata_commands::fetch_metadata,
             metadata_commands::list_metadata,
-            metadata_commands::update_metadata
+            metadata_commands::update_metadata,
+            auth_command::login,
+            auth_command::register,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
