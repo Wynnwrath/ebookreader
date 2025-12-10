@@ -205,11 +205,12 @@ pub async fn scan_books_directory(directory_path: &str) -> Result<(), String> {
 /// * `book_id` - An integer that holds the ID of the book
 /// # Returns
 /// * `Result<bool, String>` - On success, returns true if read, false otherwise
+#[tauri::command]
 pub async fn is_book_read(user_id: i32, book_id: i32) -> Result<bool, String> {
     let repo = ReadingProgressRepo::new().await;
     match repo.get_by_user_and_book(user_id, book_id)
         .await
-        .map_err(|e| e.to_string()) 
+        .map_err(|e| e.to_string())
     {
             Ok(Some(_)) => Ok(true),
             Ok(None) => Ok(false),

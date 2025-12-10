@@ -29,6 +29,7 @@ fn run() {
             book_commands::get_annotations,
             book_commands::delete_annotation,
             book_commands::scan_books_directory,
+            book_commands::is_book_read,
             // Library Commands
             library_commands::add_book_to_user_library,
             library_commands::list_user_library_books,
