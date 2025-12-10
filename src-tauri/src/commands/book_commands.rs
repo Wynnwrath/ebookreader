@@ -212,8 +212,8 @@ pub async fn is_book_read(user_id: i32, book_id: i32) -> Result<bool, String> {
         .await
         .map_err(|e| e.to_string())
     {
-            Ok(Some(_)) => Ok(true),
-            Ok(None) => Ok(false),
-            Err(e) => Err(e.to_string()),
+        Ok(Some(_)) => Ok(true),
+        Ok(None) => Ok(false),
+        Err(e) => Err(e.to_string()),
     }
 }
