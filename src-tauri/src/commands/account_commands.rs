@@ -1,5 +1,12 @@
 use crate::data::models::users::Users;
 
+/// Command to get account information by username.
+/// Returns user details if found, otherwise returns an error message.
+/// # Arguments
+/// * `username` - A string slice that holds the username of the account to fetch.
+/// # Returns
+/// * `Result<Users, String>` - On success, returns the user details; on failure, returns an error message.
+/// Refer to `Users` struct in `data::models::users` for user details structure.
 #[tauri::command]
 pub async fn get_account_info(username: &str) -> Result<Users, String> {
     // Placeholder implementation
