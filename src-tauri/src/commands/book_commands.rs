@@ -6,18 +6,6 @@ use crate::data::repos::traits::repository::Repository;
 use crate::services::book_service::{add_annotation as service_add_annotation, add_book_from_file, add_bookmark as service_add_bookmark, add_books_from_dir, delete_annotation as service_delete_annotation, delete_bookmark as service_delete_bookmark, get_annotations as service_get_annotations, get_bookmarks as service_get_bookmarks, get_epub_content};
 use std::path::Path;
 
-// Command list:
-// - [x] Import book from file path
-// - [x] Read EPUB content from file path
-// - [x] List all books
-// - [x] Get book details by ID
-// - [x] Add bookmark to book
-// - [x] Get bookmarks for a book
-// - [x] Delete bookmark by ID
-// - [x] Add annotation to book
-// - [x] Get annotations for a book
-// - [x] Delete annotation by ID
-
 /// Command to import an EPUB from a given file path
 #[tauri::command]
 pub async fn import_book(path: &str) -> Result<String, String> {
