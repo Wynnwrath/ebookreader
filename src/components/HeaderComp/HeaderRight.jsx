@@ -4,6 +4,7 @@ import { IoSettingsOutline } from "react-icons/io5";
 import { CgProfile } from "react-icons/cg";
 import { MdKeyboardArrowDown, MdExitToApp } from "react-icons/md";
 import { useNavigate } from "react-router";
+import { invoke } from "@tauri-apps/api/core";
 
 export default function HeaderRight() {
   const [open, setOpen] = useState(false);
@@ -22,10 +23,8 @@ export default function HeaderRight() {
   }, []);
 
   // For web app — try closing the window
-  const handleExit = () => {
-    if (window.confirm("Are you sure you want to exit the app?")) {
-      appWindow.close();
-    }
+  const handleExit = async() => {
+    await invoke('exit_app');
   };
 
   // Dropdown menu items
