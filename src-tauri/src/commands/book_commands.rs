@@ -5,6 +5,7 @@ use crate::data::repos::implementors::book_repo::BookRepo;
 use crate::data::repos::traits::repository::Repository;
 use crate::services::book_service::{add_annotation as service_add_annotation, add_book_from_file, add_bookmark as service_add_bookmark, add_books_from_dir, delete_annotation as service_delete_annotation, delete_bookmark as service_delete_bookmark, get_annotations as service_get_annotations, get_bookmarks as service_get_bookmarks, get_epub_content};
 use std::path::Path;
+use crate::data::repos::implementors::reading_progress_repo::ReadingProgressRepo;
 
 /// Command to import an EPUB from a given file path
 /// Returns true if the import is successful, errors as strings otherwise
@@ -195,4 +196,23 @@ pub async fn scan_books_directory(directory_path: &str) -> Result<(), String> {
     add_books_from_dir(path.to_path_buf()).await;
 
     Ok(())
+}
+
+/// Command to check if book is already read
+/// Returns true if the book is read, false otherwise
+/// # Arguments
+/// * `user_id` - An integer that holds the ID of the user
+/// * `book_id` - An integer that holds the ID of the book
+/// # Returns
+/// * `Result<bool, String>` - On success, returns true if read, false otherwise
+pub async fn is_book_read(user_id: i32, book_id: i32) -> Result<bool, String> {
+    let repo = ReadingProgressRepo::new().await;
+    match repo.get_by_user_and_book(user_id, book_id)
+        .await
+        .map_err(|e| e.to_string()) 
+    {
+            Ok(Some(_)) => Ok(true),
+            Ok(None) => Ok(false),
+            Err(e) => Err(e.to_string()),
+    }
 }
