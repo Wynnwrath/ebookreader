@@ -3,12 +3,7 @@ use crate::data::models::bookmarks::Bookmarks;
 use crate::data::models::books::Books;
 use crate::data::repos::implementors::book_repo::BookRepo;
 use crate::data::repos::traits::repository::Repository;
-use crate::services::book_service::{
-    add_annotation as service_add_annotation, add_book_from_file,
-    add_bookmark as service_add_bookmark, delete_annotation as service_delete_annotation,
-    delete_bookmark as service_delete_bookmark, get_annotations as service_get_annotations,
-    get_bookmarks as service_get_bookmarks, get_epub_content,
-};
+use crate::services::book_service::{add_annotation as service_add_annotation, add_book_from_file, add_bookmark as service_add_bookmark, add_books_from_dir, delete_annotation as service_delete_annotation, delete_bookmark as service_delete_bookmark, get_annotations as service_get_annotations, get_bookmarks as service_get_bookmarks, get_epub_content};
 use std::path::Path;
 
 // Command list:
@@ -125,4 +120,13 @@ pub async fn delete_annotation(annotation_id: i32) -> Result<(), String> {
     service_delete_annotation(annotation_id)
         .await
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn scan_books_directory(directory_path: &str) -> Result<(), String> {
+    let path = Path::new(directory_path);
+
+    add_books_from_dir(path.to_path_buf()).await;
+
+    Ok(())
 }

@@ -10,8 +10,8 @@ CREATE TABLE annotations (
     color TEXT DEFAULT '#FFFF00',
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-    FOREIGN KEY (book_id) REFERENCES books(book_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES user_library(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (book_id) REFERENCES user_library(book_id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_annotations_user_book ON annotations(user_id, book_id);

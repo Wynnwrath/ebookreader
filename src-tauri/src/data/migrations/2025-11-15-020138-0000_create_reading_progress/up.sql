@@ -7,8 +7,8 @@ CREATE TABLE reading_progress (
     page_number INTEGER,
     progress_percentage REAL DEFAULT 0.0,
     last_read_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-    FOREIGN KEY (book_id) REFERENCES books(book_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES user_library(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (book_id) REFERENCES user_library(book_id) ON DELETE CASCADE,
     UNIQUE(user_id, book_id)
 );
 

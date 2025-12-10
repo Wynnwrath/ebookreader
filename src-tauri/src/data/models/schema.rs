@@ -58,16 +58,6 @@ diesel::table! {
 }
 
 diesel::table! {
-    libraries (library_id) {
-        library_id -> Integer,
-        name -> Text,
-        path -> Text,
-        added_by -> Nullable<Integer>,
-        added_at -> Nullable<Text>,
-    }
-}
-
-diesel::table! {
     publishers (publisher_id) {
         publisher_id -> Integer,
         name -> Text,
@@ -107,16 +97,9 @@ diesel::table! {
     }
 }
 
-diesel::joinable!(annotations -> books (book_id));
-diesel::joinable!(annotations -> users (user_id));
 diesel::joinable!(book_authors -> authors (author_id));
 diesel::joinable!(book_authors -> books (book_id));
-diesel::joinable!(bookmarks -> books (book_id));
-diesel::joinable!(bookmarks -> users (user_id));
 diesel::joinable!(books -> publishers (publisher_id));
-diesel::joinable!(libraries -> users (added_by));
-diesel::joinable!(reading_progress -> books (book_id));
-diesel::joinable!(reading_progress -> users (user_id));
 diesel::joinable!(user_library -> books (book_id));
 diesel::joinable!(user_library -> users (user_id));
 
@@ -126,7 +109,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     book_authors,
     bookmarks,
     books,
-    libraries,
     publishers,
     reading_progress,
     user_library,

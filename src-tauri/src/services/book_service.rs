@@ -172,7 +172,7 @@ pub async fn add_books_from_dir<P: AsRef<Path> + Send + 'static>(path: P) {
     let epubs = scan_epubs(path).await.unwrap();
 
     for path in epubs {
-        add_book_from_file(path).await.ok();
+        add_book_from_file(path).await.unwrap();
     }
 }
 
