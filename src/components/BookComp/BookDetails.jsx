@@ -1,5 +1,5 @@
 // src/components/BookComp/BookDetails.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   FaHeart,
   FaFileAlt,
@@ -13,6 +13,7 @@ import BookCard from "../Bookdata/BookCard";
 
 import ReaderModal from "./ReaderModal";
 import BookProgress from "./BookProgress";
+import { invoke } from "@tauri-apps/api/core"; // <- import invoke
 
 function BookSynopsis({ synopsis }) {
   if (!synopsis) return null;
@@ -166,18 +167,45 @@ export default function BookDetails({
   onRelatedBookClick,
 }) {
   const [imageError, setImageError] = useState(false);
+  const [coverSrc, setCoverSrc] = useState(book.coverImage || "");
   const [openReader, setOpenReader] = useState(false);
-  const [chapterAnchor, setChapterAnchor] = useState(null); // scroll to chapter
+  const [chapterAnchor, setChapterAnchor] = useState(null);
 
-  const hasImage = book.coverImage && !imageError;
+  // Fetch cover dynamically
+  useEffect(() => {
+    let mounted = true;
+    let objectUrl;
+
+    async function fetchCover() {
+      if (!book.id) return;
+      try {
+        const byteArray = await invoke("get_cover_img", { bookId: book.id });
+        if (!mounted || !byteArray || byteArray.length === 0) return;
+
+        const blob = new Blob([new Uint8Array(byteArray)], { type: "image/png" });
+        objectUrl = URL.createObjectURL(blob);
+        setCoverSrc(objectUrl);
+      } catch (err) {
+        console.error("Failed to load cover image:", err);
+        if (mounted) setImageError(true);
+      }
+    }
+
+    if (!coverSrc) fetchCover();
+
+    return () => {
+      mounted = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [book.id, coverSrc]);
+
+  const hasImage = coverSrc && !imageError;
   const synopsis = book.synopsis || book.description;
   const effectiveRelatedBooks =
-    relatedBooks && relatedBooks.length > 0
-      ? relatedBooks
-      : book.relatedBooks || [];
+    relatedBooks.length > 0 ? relatedBooks : book.relatedBooks || [];
 
   const handleStartReading = () => {
-    setChapterAnchor(null); // start from top
+    setChapterAnchor(null);
     setOpenReader(true);
   };
 
@@ -186,28 +214,19 @@ export default function BookDetails({
     setOpenReader(true);
   };
 
-  const handleAddToLibrary = () => {
-    console.log("Add to library clicked");
-  };
-
-  const handleAddToFavorites = () => {
-    console.log("Add to favorites clicked");
-  };
-
-  const handleRelatedBookClick = (relatedBook) => {
-    if (onRelatedBookClick) onRelatedBookClick(relatedBook);
-  };
+  const handleAddToLibrary = () => console.log("Add to library clicked");
+  const handleAddToFavorites = () => console.log("Add to favorites clicked");
+  const handleRelatedBookClick = (relatedBook) => onRelatedBookClick?.(relatedBook);
 
   return (
     <>
-      {/* Reader Modal */}
       {openReader && (
         <ReaderModal
           bookId={book.id}
           filePath={book.filePath}
           bookTitle={book.title}
           onClose={() => setOpenReader(false)}
-          chapterAnchor={chapterAnchor} 
+          chapterAnchor={chapterAnchor}
         />
       )}
 
@@ -216,9 +235,9 @@ export default function BookDetails({
         <div className="w-full md:w-1/4 flex justify-center items-center">
           {hasImage ? (
             <img
-              src={book.coverImage}
+              src={coverSrc}
               alt={book.title}
-              className="rounded-xl shadow-lg w-40 sm:w-44 md:w-52 lg:w-56 aspect-[3/4] object-cover"
+              className="rounded-xl shadow-lg w-40 sm:w-44 md:w-52 lg:w-80 object-cover"
               onError={() => setImageError(true)}
             />
           ) : (
@@ -237,8 +256,7 @@ export default function BookDetails({
             {book.author || "Unknown"}
           </p>
 
-          {/* Tags */}
-          {book.tags && book.tags.length > 0 && (
+          {book.tags?.length > 0 && (
             <div className="flex flex-wrap gap-2 sm:gap-3 mt-4 text-xs sm:text-sm text-gray-300">
               {book.tags.map((tag, index) => (
                 <span
@@ -251,12 +269,10 @@ export default function BookDetails({
             </div>
           )}
 
-          {/* Star rating */}
           <div className="mt-3">
             <StarRate rating={book.rating ?? 0} size={22} />
           </div>
 
-          {/* Action buttons */}
           <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-6">
             <button
               className="px-5 sm:px-6 py-2 rounded-full bg-orange-500 hover:bg-orange-600 text-white text-sm sm:text-base font-semibold shadow-md"
@@ -278,8 +294,7 @@ export default function BookDetails({
             </button>
           </div>
 
-          {/* Chapters */}
-          {book.chapters && book.chapters.length > 0 && (
+          {book.chapters?.length > 0 && (
             <div className="mt-6">
               <h2 className="text-sm sm:text-base font-semibold text-white mb-3">
                 Chapters

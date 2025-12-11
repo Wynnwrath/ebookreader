@@ -1,40 +1,8 @@
-For front end:
-- npm install react-router-do
-- npm install react-icons
-- npm install @fontsource/inter
+TO DO:
+    - Fix animation pop up main page
+    - Design Main page color according to the Design
+    - LocalStorage fetch
+    - Scrollbar looks shit
+    - Implement Book Progress (save it to localstorage)
+    - Delete book
 
-TO Fix:
-    -responsive quote generator (adjusts according to text length)
-    - responsive sidebar animation is shit. 
-    - do something with recently read
-    - read data isn't flawless. need to change
-
-TO Do:
-    - library page 
-        [edit the path in add popup,
-        delete a folder, rearranging
-        books not centered,
-        (not priority at all):
-        being able to see file size, and type :3]
-    -book details page ( Already has a progress, but not final )
-        - Needs related page, synopsis
-
-    ░░░░░▄▄▄▄▀▀▀▀▀▀▀▀▄▄▄▄▄▄░░░░░░░
-░░░░░█░░░░▒▒▒▒▒▒▒▒▒▒▒▒░░▀▀▄░░░░
-░░░░█░░░▒▒▒▒▒▒░░░░░░░░▒▒▒░░█░░░
-░░░█░░░░░░▄██▀▄▄░░░░░▄▄▄░░░░█░░
-░▄▀▒▄▄▄▒░█▀▀▀▀▄▄█░░░██▄▄█░░░░█░
-█░▒█▒▄░▀▄▄▄▀░░░░░░░░█░░░▒▒▒▒▒░█
-█░▒█░█▀▄▄░░░░░█▀░░░░▀▄░░▄▀▀▀▄▒█
-░█░▀▄░█▄░█▀▄▄░▀░▀▀░▄▄▀░░░░█░░█░
-░░█░░░▀▄▀█▄▄░█▀▀▀▄▄▄▄▀▀█▀██░█░░
-░░░█░░░░██░░▀█▄▄▄█▄▄█▄████░█░░░
-░░░░█░░░░▀▀▄░█░░░█░█▀██████░█░░
-░░░░░▀▄░░░░░▀▀▄▄▄█▄█▄█▄█▄▀░░█░░
-░░░░░░░▀▄▄░▒▒▒▒░░░░░░░░░░▒░░░█░
-░░░░░░░░░░▀▀▄▄░▒▒▒▒▒▒▒▒▒▒░░░░█░
-░░░░░░░░░░░░░░▀▄▄▄▄▄░░░░░░░░█░░
-
-TO Do (not priority):
-    - Organize react icons, functions, components in one file
-    - 

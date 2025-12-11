@@ -3,6 +3,7 @@ import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
 import BookHeader from "../components/BookComp/BookHeader";
 import BookDetails from "../components/BookComp/BookDetails";
+import { fetchCoverPage, getCoverURLSync } from "../components/Bookdata/fetchCoverPage"; 
 
 export default function BookPage() {
   const location = useLocation();
@@ -10,6 +11,13 @@ export default function BookPage() {
   const navigate = useNavigate();
 
   const initialBook = location.state?.book ?? null;
+
+  // Initialize coverSrc synchronously from cache if possible!
+  const [coverSrc, setCoverSrc] = useState(() => {
+    if (initialBook?.id) return getCoverURLSync(initialBook.id);
+    if (id) return getCoverURLSync(id);
+    return null;
+  });
 
   const [book, setBook] = useState(initialBook);
   const [status, setStatus] = useState(initialBook ? "loaded" : "idle");
@@ -33,24 +41,29 @@ export default function BookPage() {
           return;
         }
 
-        // Map Rust struct -> frontend BookDetails props
         const mappedBook = {
           id: metadata.book_id,
           title: metadata.title,
-          author: "", 
+          author: metadata.author || "",
           coverImage: metadata.cover_image_path || "",
           type: metadata.file_type || "BOOK",
           filePath: metadata.file_path || "",
-          pages: 0, 
-          synopsis: "", 
-          relatedBooks: [], 
+          pages: metadata.total_pages || 0,
+          synopsis: metadata.description || "",
+          relatedBooks: metadata.related_books || [],
           addedAt: metadata.added_at || null,
           publishedYear: metadata.published_date || null,
-          // more fields can be added as needed
         };
 
         setBook(mappedBook);
         setStatus("loaded");
+
+        // If we didn't have the cover initially, try fetching it now
+        if (!coverSrc && mappedBook.id) {
+            const url = await fetchCoverPage(mappedBook.id);
+            if (mounted && url) setCoverSrc(url);
+        }
+
       } catch (err) {
         if (!mounted) return;
         console.error("Failed to fetch book metadata:", err);
@@ -59,14 +72,24 @@ export default function BookPage() {
       }
     }
 
-    if (!initialBook && id) {
+    if (initialBook) {
+      // Even if we have the book, if coverSrc was null (cache miss), try fetching async
+      if (!coverSrc) {
+        fetchCoverPage(initialBook.id).then(url => {
+          if (mounted && url) setCoverSrc(url);
+        });
+      }
+    } else if (id) {
       fetchBookMetadata(id);
     }
 
     return () => {
       mounted = false;
+      // Note: We don't revokeObjectURL here because we might have generated it 
+      // synchronously. Revoking it might break if we navigate back/forth quickly.
+      // Let the browser garbage collect or handle cleanup more carefully if memory is an issue.
     };
-  }, [id, initialBook]);
+  }, [id, initialBook]); // Removing coverSrc from dependency to avoid loops
 
   const handleBack = () => navigate(-1);
 
@@ -85,6 +108,7 @@ export default function BookPage() {
         book={book}
         relatedBooks={book.relatedBooks || []}
         onRelatedBookClick={handleRelatedBookClick}
+        coverSrc={coverSrc} 
       />
     );
   };

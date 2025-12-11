@@ -16,3 +16,26 @@
   --color-bg: #1e293b;        /* dark background */
   --color-text: #f9fafb;      /* light text */
 }
+
+/* Customize the track, thumb, and width for WebKit browsers */
+.custom-scrollbar {
+    /* The entire scrollbar area */
+    scrollbar-width: thin; /* Firefox (Non-standard property) */
+    scrollbar-color: #B000FF #1A1324; /* Firefox (Thumb color, Track color) */
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px; /* Width of the vertical scrollbar */
+    height: 8px; /* Height of the horizontal scrollbar */
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #1A1324; /* Use your stellar-dark color */
+    border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #B000FF; /* Use your stellar-accent color for the thumb */
+    border-radius: 10px;
+    border: 2px solid #1A1324; /* Padding around the thumb */
+}

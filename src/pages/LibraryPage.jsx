@@ -1,4 +1,3 @@
-// src/pages/LibraryPage.jsx
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -12,7 +11,6 @@ export default function LibraryPage() {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  // Map backend book object -> BookCard props
   const mapBooks = (raw) =>
     Array.isArray(raw)
       ? raw.map((b) => ({
@@ -25,7 +23,6 @@ export default function LibraryPage() {
         }))
       : [];
 
-  // Fetch all books from backend
   const fetchBooks = async () => {
     setLoading(true);
     setError(null);
@@ -45,11 +42,10 @@ export default function LibraryPage() {
     fetchBooks();
   }, []);
 
-  // IMPORT: files (one or many)
+  // IMPORT: files
   const handleImportFiles = async () => {
     try {
       setImporting(true);
-
       const selected = await open({
         directory: false,
         multiple: true,
@@ -67,7 +63,6 @@ export default function LibraryPage() {
         }
       }
 
-      // After all imports, refresh book list
       await fetchBooks();
     } catch (err) {
       console.error("File picker cancelled or failed:", err);
@@ -76,11 +71,10 @@ export default function LibraryPage() {
     }
   };
 
-  // IMPORT: directory (scan entire folder)
+  // IMPORT: directory
   const handleImportFolder = async () => {
     try {
       setImporting(true);
-
       const selectedPath = await open({
         directory: true,
         multiple: false,
@@ -90,8 +84,6 @@ export default function LibraryPage() {
       if (!selectedPath) return;
 
       await invoke("scan_books_directory", { directoryPath: selectedPath });
-
-      // After scan, refresh book list
       await fetchBooks();
     } catch (err) {
       console.error("Folder import failed:", err);
@@ -99,11 +91,6 @@ export default function LibraryPage() {
     } finally {
       setImporting(false);
     }
-  };
-
-  // When clicking a BookCard
-  const handleBookClick = (book) => {
-    navigate(`/book/${encodeURIComponent(book.id ?? book.title)}`, { state: { book } });
   };
 
   return (
@@ -144,10 +131,9 @@ export default function LibraryPage() {
       ) : books.length === 0 ? (
         <p className="text-gray-400">No books yet. Use Import File(s) or Import Folder to add books.</p>
       ) : (
-        // Compact grid: smaller gap so books are closer together
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 lg:grid-cols-10 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
           {books.map((b) => (
-            <BookCard key={b.id} {...b} onClick={() => handleBookClick(b)} />
+            <BookCard key={b.id} {...b} />
           ))}
         </div>
       )}
