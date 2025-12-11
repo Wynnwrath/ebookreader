@@ -4,6 +4,7 @@ use base64::{engine::general_purpose, Engine as _};
 use rbook::{prelude::*, Ebook, Epub};
 use regex::Regex;
 use scraper::{Html, Selector};
+use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 use tokio::{fs, task::JoinError};
@@ -12,6 +13,7 @@ use walkdir::WalkDir;
 /// # This module uses the `rbook` crate to handle EPUB files with the 'threadsafe' feature enabled.
 /// Documentation: https://docs.rs/rbook/latest/rbook/
 // A struct to hold metadata parsed from an EPUB file.
+#[derive(Serialize)]
 pub struct BookMetadata {
     pub title: String,
     pub authors: Vec<String>,
