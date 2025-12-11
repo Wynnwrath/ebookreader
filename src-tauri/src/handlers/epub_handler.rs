@@ -6,6 +6,8 @@ use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 use tokio::{fs, task::JoinError};
 use walkdir::WalkDir;
+use crate::data::repos::implementors::book_repo::BookRepo;
+use crate::data::repos::traits::repository::Repository;
 
 /// # This module uses the `rbook` crate to handle EPUB files with the 'threadsafe' feature enabled.
 /// Documentation: https://docs.rs/rbook/latest/rbook/
@@ -298,4 +300,32 @@ pub async fn export_epub_contents_to_disk(
     fs::write(output_path, contents).await?;
 
     Ok(())
+}
+
+/// Considers the first image in the book as the cover image
+/// and streams it as a u8 byte stream.
+/// Returns an empty vector if no cover image is found.
+/// # Arguments
+/// * `id` - An integer that holds the ID of the book to fetch the cover image for
+/// # Returns
+/// * `Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>>` - On success, returns the cover image as a byte vector; on failure, returns an error message
+pub async fn get_cover_image_streamed(id: i32) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {
+    let repo = BookRepo::new().await;
+
+    if let Some(book) = repo.get_by_id(id).await? {
+        let epub = Epub::open(book.file_path.as_ref().ok_or("No file path")?)?;
+
+        let cover = epub.manifest()
+            .images()
+            .next();
+        match cover {
+            Some(cover_image) => {
+                let bytes = cover_image.read_bytes()?;
+                Ok(bytes.into())
+            },
+            None => Ok(Vec::new()),
+        }
+    } else {
+        Err("Book not found".into())
+    }
 }

@@ -6,6 +6,7 @@ use crate::data::repos::traits::repository::Repository;
 use crate::services::book_service::{add_annotation as service_add_annotation, add_book_from_file, add_bookmark as service_add_bookmark, add_books_from_dir, delete_annotation as service_delete_annotation, delete_bookmark as service_delete_bookmark, get_annotations as service_get_annotations, get_bookmarks as service_get_bookmarks, get_epub_content};
 use std::path::Path;
 use crate::data::repos::implementors::reading_progress_repo::ReadingProgressRepo;
+use crate::handlers::epub_handler::get_cover_image_streamed;
 
 /// Command to import an EPUB from a given file path
 /// Returns true if the import is successful, errors as strings otherwise
@@ -215,5 +216,29 @@ pub async fn is_book_read(user_id: i32, book_id: i32) -> Result<bool, String> {
         Ok(Some(_)) => Ok(true),
         Ok(None) => Ok(false),
         Err(e) => Err(e.to_string()),
+    }
+}
+
+/// Command to get the cover image of a book by its ID
+/// Returns the cover image as a byte vector if found, otherwise returns None
+/// # Arguments
+/// * `book_id` - An integer that holds the ID of the book
+/// # Returns
+/// * `Result<Option<Vec<u8>>, String>` - On success, returns Some(byte vector) if found, None otherwise; on failure, returns an error message
+#[tauri::command]
+pub async fn get_cover_img(book_id: i32) -> Result<Option<Vec<u8>>, String> {
+    let repo = BookRepo::new().await;
+    let book: Books = match repo.get_by_id(book_id).await.map_err(|e| e.to_string())? {
+        Some(book) => Ok(book),
+        None => Err(String::from("Book not found")),
+    }?;
+
+    match get_cover_image_streamed(book.book_id)
+        .await
+        .map_err(|e| e.to_string()
+        )
+    {
+        Ok(img) => Ok(Some(img)),
+        Err(_) => Ok(None),
     }
 }
