@@ -1,113 +1,155 @@
+// src/pages/LibraryPage.jsx
 import { useEffect, useState } from "react";
-import AddFolderButton from "../components/LibraryComp/AddFolderButton";
-import FolderList from "../components/LibraryComp/FolderList";
-import ImportPopup from "../components/LibraryComp/ImportPopup";
-import { fetchLibraryFolders, saveFolder } from "../services/library";
+import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
+import BookCard from "../components/Bookdata/BookCard";
+import { useNavigate } from "react-router-dom";
 
 export default function LibraryPage() {
-  const [folders, setFolders] = useState([]);
-  const [showPopup, setShowPopup] = useState(false);
-  const [previewFolder, setPreviewFolder] = useState(null);
+  const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [importing, setImporting] = useState(false);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
+
+  // Map backend book object -> BookCard props
+  const mapBooks = (raw) =>
+    Array.isArray(raw)
+      ? raw.map((b) => ({
+          id: b.book_id,
+          title: b.title || "Untitled Book",
+          coverImage: b.cover_image_path || "",
+          type: b.file_type || "BOOK",
+          filePath: b.file_path || "",
+          author: b.author || "",
+        }))
+      : [];
+
+  // Fetch all books from backend
+  const fetchBooks = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const raw = await invoke("list_books");
+      setBooks(mapBooks(raw));
+    } catch (err) {
+      console.error("list_books failed:", err);
+      setError("Failed to load books from backend.");
+      setBooks([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    let isMounted = true;
-
-    async function loadLibrary() {
-      setLoading(true);
-      setError(null);
-      try {
-        const fetchedFolders = await fetchLibraryFolders();
-        if (!isMounted) return;
-        setFolders(fetchedFolders);
-      } catch (err) {
-        if (!isMounted) return;
-        setError(err.message || "Unable to load library folders.");
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    }
-
-    loadLibrary();
-
-    return () => {
-      isMounted = false;
-    };
+    fetchBooks();
   }, []);
 
-  // TEMP: Will be replaced with Tauri folder picker
-  const handlePickFolder = () => {
-    console.log("[LibraryPage] Folder picker triggered");
-  };
-
-  const handleAddFolderClick = () => setShowPopup(true);
-
-  const toggleExpand = (index) => {
-    setFolders((prev) =>
-      prev.map((f, i) =>
-        i === index ? { ...f, expanded: !f.expanded } : f
-      )
-    );
-  };
-
-  const handleConfirmAdd = async () => {
-    if (!previewFolder) return;
-
+  // IMPORT: files (one or many)
+  const handleImportFiles = async () => {
     try {
-      const savedFolder = await saveFolder({
-        ...previewFolder,
-        expanded: false,
+      setImporting(true);
+
+      const selected = await open({
+        directory: false,
+        multiple: true,
+        filters: [{ name: "Books", extensions: ["pdf", "epub"] }],
       });
-      setFolders((prev) => [...prev, savedFolder]);
+
+      if (!selected) return;
+
+      const paths = Array.isArray(selected) ? selected : [selected];
+      for (const path of paths) {
+        try {
+          await invoke("import_book", { path });
+        } catch (err) {
+          console.error("import_book failed for", path, err);
+        }
+      }
+
+      // After all imports, refresh book list
+      await fetchBooks();
     } catch (err) {
-      setError(err.message || "Unable to save folder.");
+      console.error("File picker cancelled or failed:", err);
+    } finally {
+      setImporting(false);
     }
-
-    setPreviewFolder(null);
-    setShowPopup(false);
   };
 
-  const handleCancel = () => {
-    setPreviewFolder(null);
-    setShowPopup(false);
+  // IMPORT: directory (scan entire folder)
+  const handleImportFolder = async () => {
+    try {
+      setImporting(true);
+
+      const selectedPath = await open({
+        directory: true,
+        multiple: false,
+        title: "Select folder to import books from",
+      });
+
+      if (!selectedPath) return;
+
+      await invoke("scan_books_directory", { directoryPath: selectedPath });
+
+      // After scan, refresh book list
+      await fetchBooks();
+    } catch (err) {
+      console.error("Folder import failed:", err);
+      setError("Folder import failed. See console for details.");
+    } finally {
+      setImporting(false);
+    }
   };
 
-  const renderContent = () => {
-    if (loading) {
-      return <p className="text-gray-300">Loading your library...</p>;
-    }
-
-    if (error) {
-      return <p className="text-red-300">{error}</p>;
-    }
-
-    if (folders.length === 0) {
-      return <AddFolderButton onClick={handleAddFolderClick} centered />;
-    }
-
-    return (
-      <>
-        <AddFolderButton onClick={handleAddFolderClick} />
-        <FolderList
-          folders={folders}
-          toggleExpand={toggleExpand}
-        />
-      </>
-    );
+  // When clicking a BookCard
+  const handleBookClick = (book) => {
+    navigate(`/book/${encodeURIComponent(book.id ?? book.title)}`, { state: { book } });
   };
 
   return (
-    <div className="min-h-screen w-full text-white p-6 space-y-6 relative">
-      {renderContent()}
+    <div className="min-h-screen p-6 text-white">
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-semibold">Library</h1>
 
-      {showPopup && (
-        <ImportPopup
-          previewFolder={previewFolder}
-          setPreviewFolder={setPreviewFolder}
-          onConfirm={handleConfirmAdd}
-          onCancel={handleCancel}
-        />
+        <div className="flex gap-2">
+          <button
+            onClick={handleImportFiles}
+            disabled={importing}
+            className="px-3 py-2 rounded bg-orange-500 hover:bg-orange-600 disabled:opacity-50"
+          >
+            {importing ? "Importing..." : "Import File(s)"}
+          </button>
+
+          <button
+            onClick={handleImportFolder}
+            disabled={importing}
+            className="px-3 py-2 rounded bg-orange-600 hover:bg-orange-700 disabled:opacity-50"
+          >
+            {importing ? "Importing..." : "Import Folder"}
+          </button>
+
+          <button
+            onClick={fetchBooks}
+            className="px-3 py-2 rounded bg-white/10 hover:bg-white/20"
+          >
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      {loading ? (
+        <p className="text-gray-300">Loading books…</p>
+      ) : error ? (
+        <p className="text-red-400">{error}</p>
+      ) : books.length === 0 ? (
+        <p className="text-gray-400">No books yet. Use Import File(s) or Import Folder to add books.</p>
+      ) : (
+        // Compact grid: smaller gap so books are closer together
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 lg:grid-cols-10 gap-2">
+          {books.map((b) => (
+            <BookCard key={b.id} {...b} onClick={() => handleBookClick(b)} />
+          ))}
+        </div>
       )}
     </div>
   );

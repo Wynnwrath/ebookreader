@@ -14,10 +14,6 @@ import BookCard from "../Bookdata/BookCard";
 import ReaderModal from "./ReaderModal";
 import BookProgress from "./BookProgress";
 
-// NOTE: If you want to call Tauri commands directly from here later,
-// you can uncomment this import and use `invoke` in the handlers below.
-// import { invoke } from "@tauri-apps/api/tauri";
-
 function BookSynopsis({ synopsis }) {
   if (!synopsis) return null;
 
@@ -151,8 +147,6 @@ function BookRelated({ relatedBooks = [], onBookClick }) {
               coverImage={book.coverImage}
               type={book.type}
               filePath={book.filePath}
-              // rating, tags, pages, currentPage can be passed too;
-              // BookCard will just ignore what it doesn't use.
               rating={book.rating}
               tags={book.tags}
               pages={book.pages}
@@ -173,13 +167,7 @@ export default function BookDetails({
 }) {
   const [imageError, setImageError] = useState(false);
   const [openReader, setOpenReader] = useState(false);
-
-  // reading progress is owned here so backend can track it
-  const [currentPage, setCurrentPage] = useState(book.currentPage ?? 1);
-
-  // Make sure we never pass 0 into the reader
-  const totalPages =
-    book.pages && book.pages > 0 ? book.pages : 1;
+  const [chapterAnchor, setChapterAnchor] = useState(null); // scroll to chapter
 
   const hasImage = book.coverImage && !imageError;
   const synopsis = book.synopsis || book.description;
@@ -188,63 +176,43 @@ export default function BookDetails({
       ? relatedBooks
       : book.relatedBooks || [];
 
-  // ---------------------------------------------------------------------------
-  // ACTION HANDLERS (TEMP – backend can hook into these)
-  // ---------------------------------------------------------------------------
-
   const handleStartReading = () => {
-    console.log("[BookDetails] START_READING clicked", { book });
+    setChapterAnchor(null); // start from top
     setOpenReader(true);
+  };
 
-    // Example Tauri hook:
-    // invoke("start_reading", { bookId: book.id });
+  const handleChapterClick = (anchor) => {
+    setChapterAnchor(anchor);
+    setOpenReader(true);
   };
 
   const handleAddToLibrary = () => {
-    console.log("[BookDetails] ADD_TO_LIBRARY clicked", { book });
-    // invoke("add_to_library", { bookId: book.id });
+    console.log("Add to library clicked");
   };
 
   const handleAddToFavorites = () => {
-    console.log("[BookDetails] ADD_TO_FAVORITES clicked", { book });
-    // invoke("add_to_favorites", { bookId: book.id });
+    console.log("Add to favorites clicked");
   };
 
   const handleRelatedBookClick = (relatedBook) => {
-    console.log("[BookDetails] RELATED_BOOK clicked", { relatedBook });
     if (onRelatedBookClick) onRelatedBookClick(relatedBook);
-  };
-
-  // Called whenever user presses next/prev in the reader
-  const handlePageChange = (page) => {
-    // clamp just in case
-    const clamped = Math.max(1, Math.min(page, totalPages));
-    setCurrentPage(clamped);
-
-    console.log("[BookDetails] Reader page changed", {
-      bookId: book.id,
-      page: clamped,
-    });
-
-    // Backend can persist reading progress here
-    // invoke("update_read_progress", { bookId: book.id, page: clamped });
   };
 
   return (
     <>
-      {/* READER POPUP (blurred overlay) */}
+      {/* Reader Modal */}
       {openReader && (
         <ReaderModal
           bookId={book.id}
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={handlePageChange}
+          filePath={book.filePath}
+          bookTitle={book.title}
           onClose={() => setOpenReader(false)}
+          chapterAnchor={chapterAnchor} 
         />
       )}
 
       <GlassCard className="flex flex-col md:flex-row gap-4 lg:gap-8 p-4 md:p-6 mt-4 items-start">
-        {/* COVER AREA */}
+        {/* Cover */}
         <div className="w-full md:w-1/4 flex justify-center items-center">
           {hasImage ? (
             <img
@@ -254,30 +222,17 @@ export default function BookDetails({
               onError={() => setImageError(true)}
             />
           ) : (
-            <div
-              className="
-                rounded-xl shadow-lg 
-                w-40 sm:w-44 md:w-52 lg:w-60
-                aspect-[3/4]
-                bg-white/10 border border-white/20 
-                flex items-center justify-center
-                text-center px-4 
-                text-xs sm:text-sm md:text-base text-white font-semibold
-              "
-            >
+            <div className="rounded-xl shadow-lg w-40 sm:w-44 md:w-52 lg:w-60 aspect-[3/4] bg-white/10 flex items-center justify-center text-center text-xs sm:text-sm md:text-base text-white font-semibold">
               {book.title}
             </div>
           )}
         </div>
 
-        {/* DETAILS AREA */}
+        {/* Details */}
         <div className="flex flex-col justify-start md:w-3/4 text-white">
-          {/* Title */}
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight">
             {book.title}
           </h1>
-
-          {/* Author */}
           <p className="text-base sm:text-lg md:text-xl text-gray-300 mt-2">
             {book.author || "Unknown"}
           </p>
@@ -301,52 +256,48 @@ export default function BookDetails({
             <StarRate rating={book.rating ?? 0} size={22} />
           </div>
 
-          {/* ACTION BUTTONS */}
+          {/* Action buttons */}
           <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-6">
-            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-              <button
-                className="
-                  handle-start-reading
-                  px-5 sm:px-6 py-2 rounded-full bg-orange-500 hover:bg-orange-600 
-                  transition text-white text-sm sm:text-base font-semibold shadow-md
-                "
-                onClick={handleStartReading}
-              >
-                START READING
-              </button>
-
-              <button
-                className="
-                  handle-add-library
-                  px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 transition 
-                  border border-white/20 flex items-center gap-2 text-xs sm:text-sm
-                "
-                onClick={handleAddToLibrary}
-              >
-                <span>📚</span>
-                <span>Add to Library</span>
-              </button>
-            </div>
-
             <button
-              className="
-                handle-add-favorite
-                px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 transition 
-                border border-white/20 flex items-center gap-2 text-xs sm:text-sm md:ml-auto
-              "
+              className="px-5 sm:px-6 py-2 rounded-full bg-orange-500 hover:bg-orange-600 text-white text-sm sm:text-base font-semibold shadow-md"
+              onClick={handleStartReading}
+            >
+              START READING
+            </button>
+            <button
+              className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 transition border border-white/20 flex items-center gap-2 text-xs sm:text-sm"
+              onClick={handleAddToLibrary}
+            >
+              📚 Add to Library
+            </button>
+            <button
+              className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 transition border border-white/20 flex items-center gap-2 text-xs sm:text-sm md:ml-auto"
               onClick={handleAddToFavorites}
             >
-              <FaHeart className="text-red-400" />
-              <span>Add to Favorites</span>
+              <FaHeart className="text-red-400" /> Add to Favorites
             </button>
           </div>
 
-          {/* REUSABLE BOOK PROGRESS (same data used by reader modal) */}
-          <BookProgress
-            currentPage={currentPage}
-            totalPages={totalPages}
-            className="mt-4"
-          />
+          {/* Chapters */}
+          {book.chapters && book.chapters.length > 0 && (
+            <div className="mt-6">
+              <h2 className="text-sm sm:text-base font-semibold text-white mb-3">
+                Chapters
+              </h2>
+              <ul className="list-disc pl-5 space-y-1">
+                {book.chapters.map((chapter) => (
+                  <li key={chapter.id}>
+                    <button
+                      className="text-sm sm:text-base text-blue-400 hover:underline"
+                      onClick={() => handleChapterClick(chapter.id)}
+                    >
+                      {chapter.title}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <BookSynopsis synopsis={synopsis} />
           <BookMeta book={book} />
