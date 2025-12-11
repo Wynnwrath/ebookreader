@@ -2,11 +2,17 @@ use crate::data::models::annotations::Annotations;
 use crate::data::models::bookmarks::Bookmarks;
 use crate::data::models::books::Books;
 use crate::data::repos::implementors::book_repo::BookRepo;
-use crate::data::repos::traits::repository::Repository;
-use crate::services::book_service::{add_annotation as service_add_annotation, add_book_from_file, add_bookmark as service_add_bookmark, add_books_from_dir, delete_annotation as service_delete_annotation, delete_bookmark as service_delete_bookmark, get_annotations as service_get_annotations, get_bookmarks as service_get_bookmarks, get_epub_content};
-use std::path::Path;
 use crate::data::repos::implementors::reading_progress_repo::ReadingProgressRepo;
+use crate::data::repos::traits::repository::Repository;
 use crate::handlers::epub_handler::get_cover_image_streamed;
+use crate::services::book_service::{
+    add_annotation as service_add_annotation, add_book_from_file,
+    add_bookmark as service_add_bookmark, add_books_from_dir,
+    delete_annotation as service_delete_annotation, delete_bookmark as service_delete_bookmark,
+    get_annotations as service_get_annotations, get_bookmarks as service_get_bookmarks,
+    get_epub_content,
+};
+use std::path::Path;
 
 /// Command to import an EPUB from a given file path
 /// Returns true if the import is successful, errors as strings otherwise
@@ -209,7 +215,8 @@ pub async fn scan_books_directory(directory_path: &str) -> Result<(), String> {
 #[tauri::command]
 pub async fn is_book_read(user_id: i32, book_id: i32) -> Result<bool, String> {
     let repo = ReadingProgressRepo::new().await;
-    match repo.get_by_user_and_book(user_id, book_id)
+    match repo
+        .get_by_user_and_book(user_id, book_id)
         .await
         .map_err(|e| e.to_string())
     {
@@ -235,8 +242,7 @@ pub async fn get_cover_img(book_id: i32) -> Result<Option<Vec<u8>>, String> {
 
     match get_cover_image_streamed(book.book_id)
         .await
-        .map_err(|e| e.to_string()
-        )
+        .map_err(|e| e.to_string())
     {
         Ok(img) => Ok(Some(img)),
         Err(_) => Ok(None),

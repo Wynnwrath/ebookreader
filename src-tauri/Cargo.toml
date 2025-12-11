@@ -44,6 +44,7 @@ uuid = { version = "1.18.1", features = ["v4"] }
 tauri-plugin-dialog = "2.4.2"
 tauri-plugin-process = "2.3.1"
 tauri-plugin-fs = "2.4.4"
+diesel_migrations = "2.3.1"
 
 
 # 👇 Force bundled SQLite

@@ -50,7 +50,7 @@ pub async fn connect_from_pool(
 static DB_POOL: Lazy<Pool<SyncConnectionWrapper<SqliteConnection>>> = Lazy::new(|| {
     dotenv().ok();
 
-    let database_path = env::var("DATABASE_URL").expect("Failed to find database URL from env!");
+    let database_path = env::var("DATABASE_URL").unwrap_or_else(|_| "./database.db".to_string());
     let config =
         AsyncDieselConnectionManager::<SyncConnectionWrapper<SqliteConnection>>::new(database_path);
 
