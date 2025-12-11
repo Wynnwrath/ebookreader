@@ -10,7 +10,12 @@ pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./src/data/migrati
 
 #[tokio::main]
 async fn main() {
-    let mut connection = diesel::SqliteConnection::establish("./database.db").unwrap();
+    dotenvy::dotenv().ok();
+
+    let database_url =
+        std::env::var("DATABASE_URL").unwrap_or_else(|_| "./database.db".to_string());
+
+    let mut connection = diesel::SqliteConnection::establish(&database_url).unwrap();
 
     connection
         .run_pending_migrations(MIGRATIONS)
