@@ -31,6 +31,7 @@ fn run() {
             book_commands::scan_books_directory,
             book_commands::is_book_read,
             book_commands::get_cover_img,
+            book_commands::remove_book,
             // Library Commands
             library_commands::add_book_to_user_library,
             library_commands::list_user_library_books,

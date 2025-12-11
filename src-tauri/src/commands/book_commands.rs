@@ -242,3 +242,17 @@ pub async fn get_cover_img(book_id: i32) -> Result<Option<Vec<u8>>, String> {
         Err(_) => Ok(None),
     }
 }
+
+/// Command to remove a book by its ID
+/// Returns void if the removal is successful, errors as strings otherwise
+/// # Arguments
+/// * `book_id` - An integer that holds the ID of the book to remove
+/// # Returns
+/// * `Result<(), String>` - On success, returns (); on failure, returns an error message
+#[tauri::command]
+pub async fn remove_book(book_id: i32) -> Result<bool, String> {
+    let repo = BookRepo::new().await;
+    repo.delete(book_id).await.map_err(|e| e.to_string())?;
+
+    Ok(true)
+}
