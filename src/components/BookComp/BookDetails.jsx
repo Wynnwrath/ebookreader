@@ -292,6 +292,7 @@ export default function BookDetails({
             >
               <FaHeart className="text-red-400" /> Add to Favorites
             </button>
+            
           </div>
 
           {book.chapters?.length > 0 && (

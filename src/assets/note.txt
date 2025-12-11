@@ -1,8 +1,12 @@
 TO DO:
-    - Fix animation pop up main page
-    - Design Main page color according to the Design
-    - LocalStorage fetch
-    - Scrollbar looks shit
+    - Lightmode darkmode reader modal
+    - Add books in home page
+    - Bookmarks maniga
+    - LocalStorage fetch (bookcard kuwang)
     - Implement Book Progress (save it to localstorage)
-    - Delete book
 
+
+COMPLETED:
+    - Fix animation pop up main page (GOOD)
+    - Design Main page color according to the Design
+        - Scrollbar looks shit

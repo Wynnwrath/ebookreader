@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
+import { ask } from "@tauri-apps/plugin-dialog"; // <--- Import Native Dialog
 import BookHeader from "../components/BookComp/BookHeader";
 import BookDetails from "../components/BookComp/BookDetails";
 import { fetchCoverPage, getCoverURLSync } from "../components/Bookdata/fetchCoverPage"; 
@@ -58,7 +59,6 @@ export default function BookPage() {
         setBook(mappedBook);
         setStatus("loaded");
 
-        // If we didn't have the cover initially, try fetching it now
         if (!coverSrc && mappedBook.id) {
             const url = await fetchCoverPage(mappedBook.id);
             if (mounted && url) setCoverSrc(url);
@@ -73,7 +73,6 @@ export default function BookPage() {
     }
 
     if (initialBook) {
-      // Even if we have the book, if coverSrc was null (cache miss), try fetching async
       if (!coverSrc) {
         fetchCoverPage(initialBook.id).then(url => {
           if (mounted && url) setCoverSrc(url);
@@ -85,13 +84,47 @@ export default function BookPage() {
 
     return () => {
       mounted = false;
-      // Note: We don't revokeObjectURL here because we might have generated it 
-      // synchronously. Revoking it might break if we navigate back/forth quickly.
-      // Let the browser garbage collect or handle cleanup more carefully if memory is an issue.
     };
-  }, [id, initialBook]); // Removing coverSrc from dependency to avoid loops
+  }, [id, initialBook]); 
 
   const handleBack = () => navigate(-1);
+
+  // --- REMOVE BOOK LOGIC (FIXED) ---
+  const handleRemoveBook = async () => {
+    if (!book) return;
+
+    // 1. Use Native Tauri Dialog (Blocks correctly and looks native)
+    const confirmed = await ask(`Are you sure you want to permanently delete "${book.title}"?`, {
+      title: 'Remove Book',
+      kind: 'warning',
+      okLabel: 'Delete',
+      cancelLabel: 'Cancel'
+    });
+
+    if (!confirmed) return; // Stop if user clicks Cancel
+
+    try {
+      // 2. Call Backend
+      const success = await invoke("remove_book", { bookId: book.id });
+      
+      if (success) {
+        // 3. Clear from LocalStorage
+        const cacheKey = `book_cover_${book.id}`;
+        localStorage.removeItem(cacheKey);
+
+        // 4. Navigate to Library
+        alert(`Book "${book.title}" removed!`);
+        navigate("/library"); // <--- Changed from "/" to "/library"
+      } else {
+        alert("Failed to remove book. Please try again.");
+      }
+
+    } catch (err) {
+      console.error("Failed to delete book:", err);
+      alert(`Error removing book: ${err}`);
+    }
+  };
+  // -------------------------
 
   const handleRelatedBookClick = (relatedBook) => {
     const bookId = relatedBook.id ?? encodeURIComponent(relatedBook.title);
@@ -115,7 +148,10 @@ export default function BookPage() {
 
   return (
     <div className="px-4 py-6 md:px-10 md:py-10 lg:px-20 lg:py-10 rounded-2xl min-h-full">
-      <BookHeader onBack={handleBack} />
+      <BookHeader 
+        onBack={handleBack} 
+        onRemove={handleRemoveBook} 
+      />
       {renderContent()}
     </div>
   );

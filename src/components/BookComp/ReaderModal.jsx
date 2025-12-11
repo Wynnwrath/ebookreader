@@ -107,7 +107,7 @@ export default function ReaderModal({
         <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-black/50 to-transparent pointer-events-none" />
         <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-black/50 to-transparent pointer-events-none" />
 
-        <div className="pointer-events-auto relative w-full max-w-5xl h-[90vh] bg-[#1a1a1a] text-white shadow-2xl rounded-2xl flex flex-col overflow-hidden border border-white/10 animate-pop-in">
+        <div className="pointer-events-auto relative w-full max-w-5xl h-[95vh] bg-[#1a1a1a] text-white shadow-2xl rounded-2xl flex flex-col overflow-hidden border border-white/10 animate-pop-in">
           
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 bg-[#252525] border-b border-white/5 shrink-0">
