@@ -1,11 +1,25 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use tauri::AppHandle;
+use diesel::Connection;
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use stellaron_lib::commands::*;
+use tauri::AppHandle;
+
+pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./src/data/migrations");
 
 #[tokio::main]
 async fn main() {
+    dotenvy::dotenv().ok();
+
+    let database_url =
+        std::env::var("DATABASE_URL").unwrap_or_else(|_| "./database.db".to_string());
+
+    let mut connection = diesel::SqliteConnection::establish(&database_url).unwrap();
+
+    connection
+        .run_pending_migrations(MIGRATIONS)
+        .expect("Error running database migrations");
     run();
 }
 
