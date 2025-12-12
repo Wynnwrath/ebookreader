@@ -1,122 +1,107 @@
 import { useState, useEffect } from "react";
-import BookCard from "./BookCard";
+import BookCard from "../Bookdata/BookCard"; 
 import { SlArrowRight, SlArrowLeft } from "react-icons/sl";
 
-/**
- * BookSlider Component
- * - Displays a horizontal, paginated carousel of books.
- * - Accepts an optional `onBookClick(book)` callback so parents
- *   can handle navigation or backend actions (e.g., open reader).
- */
 export default function BookSlider({ books = [], title, onBookClick }) {
-  // Current page index of the slider
   const [currentPage, setCurrentPage] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(5); 
 
-  // How many books are visible at once depending on screen size
-  const [visibleCount, setVisibleCount] = useState(10);
-
-  // Adjust visible book count when the window is resized
+  // --- RESPONSIVE SETTINGS ---
+  // Adjusted to ensure arrows appear if you have > 6 books
   useEffect(() => {
     const updateVisibleCount = () => {
-      if (window.innerWidth < 640) setVisibleCount(2); // Mobile view
-      else if (window.innerWidth < 1024) setVisibleCount(4); // Tablet view
-      else setVisibleCount(10); // Desktop view
+      const width = window.innerWidth;
+      if (width < 640) setVisibleCount(2);       // Mobile: 2 books
+      else if (width < 768) setVisibleCount(3);  // Tablet Portrait: 3 books
+      else if (width < 1280) setVisibleCount(4); // Laptop: 4 books
+      else if (width < 1536) setVisibleCount(5); // Desktop: 5 books
+      else setVisibleCount(6);                   // Large Screens: 6 books
     };
 
     updateVisibleCount();
     window.addEventListener("resize", updateVisibleCount);
-
-    // Cleanup on unmount
     return () => window.removeEventListener("resize", updateVisibleCount);
   }, []);
 
-  // Calculate total pagination pages
-  const totalPages =
-    visibleCount > 0 ? Math.ceil(books.length / visibleCount) : 0;
+  // Calculate pages
+  const totalPages = visibleCount > 0 ? Math.ceil(books.length / visibleCount) : 0;
+  
+  // Show arrows only if we have more books than can fit on one screen
+  const showArrows = books.length > visibleCount;
 
-  // Ensure currentPage is within bounds when books/visibleCount change
+  // Reset to page 0 if books change (e.g., refresh)
   useEffect(() => {
-    if (totalPages === 0) {
-      setCurrentPage(0);
-      return;
-    }
+    setCurrentPage(0);
+  }, [books.length]);
 
-    setCurrentPage((prev) => {
-      if (prev >= totalPages) return totalPages - 1;
-      if (prev < 0) return 0;
-      return prev;
-    });
-  }, [totalPages]);
-
-  // Determine which books should be displayed for the current page
   const startIndex = currentPage * visibleCount;
   const visibleBooks = books.slice(startIndex, startIndex + visibleCount);
 
-  // Navigate forward with looping (only if more than 1 page)
   const handleNext = () => {
-    if (totalPages <= 1) return;
-    setCurrentPage((prev) => (prev + 1) % totalPages);
-  };
-
-  // Navigate backward with looping (only if more than 1 page)
-  const handlePrev = () => {
-    if (totalPages <= 1) return;
-    setCurrentPage((prev) => (prev - 1 + totalPages) % totalPages);
-  };
-
-  // Handle book clicks and forward to parent if provided
-  const handleBookClick = (book) => {
-    if (onBookClick) {
-      onBookClick(book);
-    } else {
-      console.log("[BookSlider] Clicked book:", book);
+    if (showArrows) {
+      setCurrentPage((prev) => (prev + 1) % totalPages);
     }
   };
 
+  const handlePrev = () => {
+    if (showArrows) {
+      setCurrentPage((prev) => (prev - 1 + totalPages) % totalPages);
+    }
+  };
+
+  if (!books || books.length === 0) return null;
+
   return (
-    <div className="relative w-full h-full p-6 pt-0">
-      {/* Header section with title and navigation controls */}
-      <div className="flex justify-between items-center px-10 mb-4">
+    <div className="relative w-full p-6 pt-0 flex flex-col gap-4">
+      {/* Header */}
+      <div className="flex justify-between items-center px-2">
         {title && (
-          <h2 className="text-xl sm:text-2xl font-bold text-white tracking-wide">
+          <h2 className="text-xl sm:text-2xl font-bold text-white tracking-wide border-l-4 border-orange-500 pl-3">
             {title}
           </h2>
         )}
 
-        {/* Navigation arrows */}
-        <div className="flex gap-3">
-          <button
-            onClick={handlePrev}
-            className="w-9 h-9 sm:w-10 sm:h-10 
-                       bg-gradient-to-br from-orange-500/60 to-violet-600/60 
-                       text-white rounded-full flex items-center justify-center 
-                       hover:from-orange-500 hover:to-violet-600 hover:scale-105 
-                       transition-all duration-300 shadow-[0_0_10px_rgba(255,153,51,0.4)]"
-          >
-            <SlArrowLeft size={18} />
-          </button>
+        {/* Navigation Arrows */}
+        {showArrows && (
+          <div className="flex gap-3">
+            <button
+              onClick={handlePrev}
+              className="w-9 h-9 sm:w-10 sm:h-10 
+                         bg-white/10 hover:bg-orange-500/80
+                         border border-white/10 hover:border-orange-500
+                         text-white rounded-full flex items-center justify-center 
+                         transition-all duration-200 active:scale-95 shadow-md"
+            >
+              <SlArrowLeft size={16} />
+            </button>
 
-          <button
-            onClick={handleNext}
-            className="w-9 h-9 sm:w-10 sm:h-10 
-                       bg-gradient-to-br from-orange-500/60 to-violet-600/60 
-                       text-white rounded-full flex items-center justify-center 
-                       hover:from-orange-500 hover:to-violet-600 hover:scale-105 
-                       transition-all duration-300 shadow-[0_0_10px_rgba(255,153,51,0.4)]"
-          >
-            <SlArrowRight size={18} />
-          </button>
-        </div>
+            <button
+              onClick={handleNext}
+              className="w-9 h-9 sm:w-10 sm:h-10 
+                         bg-white/10 hover:bg-orange-500/80
+                         border border-white/10 hover:border-orange-500
+                         text-white rounded-full flex items-center justify-center 
+                         transition-all duration-200 active:scale-95 shadow-md"
+            >
+              <SlArrowRight size={16} />
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Row of currently visible books */}
-      <div className="flex gap-2 sm:gap-4 overflow-hidden px-10">
-        {visibleBooks.map((book, index) => (
+      {/* Books Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 min-h-[300px]">
+        {visibleBooks.map((book) => (
           <BookCard
-            key={index}
+            key={book.id}
             {...book}
-            onClick={handleBookClick} // forward clicks up with full book info
+            onClick={() => onBookClick && onBookClick(book)}
           />
+        ))}
+        
+        {/* Fillers to keep height stable if last page has few books */}
+        {Array.from({ length: visibleCount - visibleBooks.length }).map((_, i) => (
+           <div key={`empty-${i}`} className="hidden md:block" />
         ))}
       </div>
     </div>

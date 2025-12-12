@@ -1,26 +1,22 @@
-import TheTraitorBook from "../images/thetraitorbook.png";
 import Library from "./Bookdata/Library";
 
 export default function ContinueRead() {
-  const books = [
-    { title: "Book 1", author: "Author A", coverImage: TheTraitorBook } ,
-    { title: "Book 2", author: "Author B", coverImage: "/covers/book2.jpg" },
-    { title: "Book 3", author: "Author C", coverImage: "/covers/book3.jpg" },
-    { title: "Book 4", author: "Author D", coverImage: "/covers/book4.jpg" },
-    { title: "Book 5", author: "Author E", coverImage: "/covers/book5.jpg" },
-    { title: "Book 6", author: "Author F", coverImage: "/covers/book6.jpg" },
-    { title: "Book 7", author: "Author G", coverImage: "/covers/book7.jpg" },
-    { title: "Book 8", author: "Author H", coverImage: "/covers/book8.jpg" },
-    { title: "Book 9", author: "Author I", coverImage: "/covers/book9.jpg" },
-    { title: "Book 10", author: "Author J", coverImage: "/covers/book10.jpg" },
-    {title: "Book 11", author: "Author K", coverImage: "/covers/book11.jpg" },
-    {title: "Book 12", author: "Author L", coverImage: "/covers/book12.jpg" }
-  ];
-  
   return (
-    <div className="h-full flex flex-col justify-between  items-center w-full flex-1 [grid-area: continue] p-4 col-span-2 row-span-1">
-      <div className="w-full">
-        <Library></Library>
+    // [grid-area:continue] places it at the bottom.
+    // overflow-hidden keeps the library list contained.
+    <div className="[grid-area:continue] w-full h-full flex flex-col p-2 overflow-hidden">
+      
+      {/* Header Section (Matches screenshot design) */}
+      <div className="flex items-center gap-3 px-2 mb-3 mt-2 shrink-0">
+        <div className="w-1 h-6 bg-orange-500 rounded-full shadow-[0_0_8px_rgba(249,115,22,0.6)]" />
+        <h2 className="text-lg sm:text-xl font-semibold text-white tracking-wide">
+          Continue Reading
+        </h2>
+      </div>
+
+      {/* Library Container - Takes remaining space */}
+      <div className="flex-1 w-full min-h-0 relative rounded-xl border border-white/5 bg-white/[0.02]">
+        <Library />
       </div>
     </div>
   );

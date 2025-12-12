@@ -1,37 +1,32 @@
 import React, { useState } from "react";
 import { FaStar } from "react-icons/fa";
 
-/**
- * StarRate Component
- * - Interactive star rating if onChange is provided
- * - Static read-only if onChange is NOT provided
- * - Fixes layout by removing centered alignment
- */
 export default function StarRate({
   rating = 0,
-  size = 24,
-  onChange,         // Optional callback → interactive if provided
+  size, // Optional: If provided, overrides responsive defaults
+  onChange,
 }) {
-  
   const [hover, setHover] = useState(null);
-
   const isInteractive = typeof onChange === "function";
 
   return (
-    <div className="flex gap-1 items-center">
+    <div className="flex items-center gap-1.5">
       {[1, 2, 3, 4, 5].map((value) => {
-        const active = hover ? value <= hover : value <= rating;
+        const isActive = hover ? value <= hover : value <= (rating || 0);
 
         return (
           <FaStar
             key={value}
-            size={size}
-            color={active ? "#FFD700" : "#555"}  // gold / muted grey
-            className={
-              isInteractive
-                ? "cursor-pointer transition-transform hover:scale-110"
-                : "cursor-default"
-            }
+            size={size} // Respects manual size if passed (e.g. size={22})
+            className={`
+              transition-all duration-300 ease-out
+              ${!size ? "text-3xl sm:text-4xl md:text-5xl" : ""} /* Default: Big & Responsive */
+              ${isActive 
+                  ? "text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]" 
+                  : "text-white/10"
+              }
+              ${isInteractive ? "cursor-pointer hover:scale-110 active:scale-90" : "cursor-default"}
+            `}
             onMouseEnter={() => isInteractive && setHover(value)}
             onMouseLeave={() => isInteractive && setHover(null)}
             onClick={() => isInteractive && onChange(value)}

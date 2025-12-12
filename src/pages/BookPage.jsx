@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
-import { ask } from "@tauri-apps/plugin-dialog"; // <--- Import Native Dialog
+import { ask } from "@tauri-apps/plugin-dialog";
 import BookHeader from "../components/BookComp/BookHeader";
 import BookDetails from "../components/BookComp/BookDetails";
 import { fetchCoverPage, getCoverURLSync } from "../components/Bookdata/fetchCoverPage"; 
@@ -12,9 +12,10 @@ export default function BookPage() {
   const navigate = useNavigate();
 
   const initialBook = location.state?.book ?? null;
+  const preloadedCover = location.state?.preloadedCover ?? null;
 
-  // Initialize coverSrc synchronously from cache if possible!
   const [coverSrc, setCoverSrc] = useState(() => {
+    if (preloadedCover) return preloadedCover;
     if (initialBook?.id) return getCoverURLSync(initialBook.id);
     if (id) return getCoverURLSync(id);
     return null;
@@ -23,6 +24,20 @@ export default function BookPage() {
   const [book, setBook] = useState(initialBook);
   const [status, setStatus] = useState(initialBook ? "loaded" : "idle");
   const [error, setError] = useState(null);
+  
+  // New State for Progress
+  const [currentProgress, setCurrentProgress] = useState(0);
+
+  // Helper: Read progress from LocalStorage
+  const loadProgress = useCallback((bookId) => {
+    if (!bookId) return;
+    const saved = localStorage.getItem(`book_progress_${bookId}`);
+    if (saved) {
+      setCurrentProgress(parseFloat(saved));
+    } else {
+      setCurrentProgress(0);
+    }
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -30,7 +45,6 @@ export default function BookPage() {
     async function fetchBookMetadata(bookId) {
       setStatus("loading");
       setError(null);
-
       try {
         const metadata = await invoke("fetch_metadata", { bookId: Number(bookId) });
         if (!mounted) return;
@@ -59,7 +73,10 @@ export default function BookPage() {
         setBook(mappedBook);
         setStatus("loaded");
 
-        if (!coverSrc && mappedBook.id) {
+        // Load progress immediately
+        loadProgress(mappedBook.id);
+
+        if (mappedBook.id) {
             const url = await fetchCoverPage(mappedBook.id);
             if (mounted && url) setCoverSrc(url);
         }
@@ -72,28 +89,26 @@ export default function BookPage() {
       }
     }
 
-    if (initialBook) {
+    if (!initialBook && id) {
+      fetchBookMetadata(id);
+    } else if (initialBook) {
+      // Even if we have the book object, we must load the progress from storage
+      loadProgress(initialBook.id);
+      
       if (!coverSrc) {
         fetchCoverPage(initialBook.id).then(url => {
           if (mounted && url) setCoverSrc(url);
         });
       }
-    } else if (id) {
-      fetchBookMetadata(id);
     }
 
-    return () => {
-      mounted = false;
-    };
-  }, [id, initialBook]); 
+    return () => { mounted = false; };
+  }, [id, initialBook, loadProgress]); 
 
   const handleBack = () => navigate(-1);
 
-  // --- REMOVE BOOK LOGIC (FIXED) ---
   const handleRemoveBook = async () => {
     if (!book) return;
-
-    // 1. Use Native Tauri Dialog (Blocks correctly and looks native)
     const confirmed = await ask(`Are you sure you want to permanently delete "${book.title}"?`, {
       title: 'Remove Book',
       kind: 'warning',
@@ -101,30 +116,29 @@ export default function BookPage() {
       cancelLabel: 'Cancel'
     });
 
-    if (!confirmed) return; // Stop if user clicks Cancel
+    if (!confirmed) return;
 
     try {
-      // 2. Call Backend
       const success = await invoke("remove_book", { bookId: book.id });
-      
       if (success) {
-        // 3. Clear from LocalStorage
-        const cacheKey = `book_cover_${book.id}`;
-        localStorage.removeItem(cacheKey);
-
-        // 4. Navigate to Library
+        // Clear Cover
+        localStorage.removeItem(`book_cover_${book.id}`);
+        // Clear Progress
+        localStorage.removeItem(`book_progress_${book.id}`);
+        
         alert(`Book "${book.title}" removed!`);
-        navigate("/library"); // <--- Changed from "/" to "/library"
+        
+        // ✅ FIX: Navigate back to wherever the user came from (Home, Library, etc.)
+        // This mimics the behavior of the "Back" button
+        navigate(-1); 
       } else {
         alert("Failed to remove book. Please try again.");
       }
-
     } catch (err) {
       console.error("Failed to delete book:", err);
       alert(`Error removing book: ${err}`);
     }
   };
-  // -------------------------
 
   const handleRelatedBookClick = (relatedBook) => {
     const bookId = relatedBook.id ?? encodeURIComponent(relatedBook.title);
@@ -141,17 +155,18 @@ export default function BookPage() {
         book={book}
         relatedBooks={book.relatedBooks || []}
         onRelatedBookClick={handleRelatedBookClick}
-        coverSrc={coverSrc} 
+        coverSrc={coverSrc}
+        // Pass the live progress
+        progress={currentProgress} 
+        // Pass function to refresh progress when reader closes
+        onRefreshProgress={() => loadProgress(book.id)}
       />
     );
   };
 
   return (
     <div className="px-4 py-6 md:px-10 md:py-10 lg:px-20 lg:py-10 rounded-2xl min-h-full">
-      <BookHeader 
-        onBack={handleBack} 
-        onRemove={handleRemoveBook} 
-      />
+      <BookHeader onBack={handleBack} onRemove={handleRemoveBook} />
       {renderContent()}
     </div>
   );

@@ -131,7 +131,7 @@ export default function LibraryPage() {
       ) : books.length === 0 ? (
         <p className="text-gray-400">No books yet. Use Import File(s) or Import Folder to add books.</p>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-10">
           {books.map((b) => (
             <BookCard key={b.id} {...b} />
           ))}

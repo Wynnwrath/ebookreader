@@ -1,12 +1,19 @@
 TO DO:
-    - Lightmode darkmode reader modal
-    - Add books in home page
     - Bookmarks maniga
-    - LocalStorage fetch (bookcard kuwang)
-    - Implement Book Progress (save it to localstorage)
+    - Make it theme-able (less prio)
 
+Semi-completed:
+    - Tooltip (details displayed are not important yet)
+    - Add book progress (only from frontend currently)
+    - Lightmode darkmode (reader modal (only scrollbar left))
+    - Implement Book Progress (save it to localstorage, it needs to go to backend)
 
 COMPLETED:
     - Fix animation pop up main page (GOOD)
     - Design Main page color according to the Design
-        - Scrollbar looks shit
+    - Scrollbar looks shit
+    - LocalStorage fetch (bookcard kuwang)
+    - Book Searchbar
+    - Star rating by user
+    - Add books in home page
+
