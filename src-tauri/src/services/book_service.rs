@@ -1,4 +1,8 @@
-use crate::data::models::annotations::NewAnnotation;
+use crate::data::models::authors::NewAuthor;
+use crate::data::models::book_authors::BookAuthors;
+use crate::data::repos::implementors::author_repo::AuthorRepo;
+use crate::data::repos::implementors::book_author_repo;
+use crate::data::{models::annotations::NewAnnotation, repos::implementors::book_author_repo::BookAuthorRepo};
 use crate::data::models::bookmarks::NewBookmark;
 use crate::data::models::books::NewBook;
 use crate::data::repos::implementors::annotation_repo::AnnotationRepo;
@@ -36,7 +40,71 @@ pub async fn add_book_from_metadata(
         checksum: Some(&metadata.checksum),
     };
 
-    repo.add(new_book).await
+    repo.add(new_book).await?;
+
+    let book = repo
+        .search_by_checksum(&metadata.checksum)
+        .await?
+        .ok_or_else(|| {
+            Error::DatabaseError(
+                diesel::result::DatabaseErrorKind::NotNullViolation,
+                Box::new("Failed to retrieve newly added book".to_string()),
+            )
+        })?;
+
+    for author in &metadata.authors {
+        let author_repo = AuthorRepo::new().await;
+        let book_author_repo  = BookAuthorRepo::new().await;
+
+        let existing_author = author_repo
+            .search_by_name(&author)
+            .await?
+            .unwrap_or_default()
+            .into_iter()
+            .next();
+
+        if existing_author.is_none() {
+            // Add new author
+            let new_author = NewAuthor { name: &author };
+            author_repo.add(new_author).await?;
+
+            let created_author = author_repo
+                .search_by_name(&author)
+                .await?
+                .ok_or_else(|| {
+                    Error::DatabaseError(
+                        diesel::result::DatabaseErrorKind::NotNullViolation,
+                        Box::new("Failed to retrieve newly added author".to_string()),
+                    )
+                })?
+                .into_iter()
+                .next()
+                .ok_or_else(|| {
+                    Error::DatabaseError(
+                        diesel::result::DatabaseErrorKind::NotNullViolation,
+                        Box::new("Failed to retrieve newly added author".to_string()),
+                    )
+                })?;
+
+            let new_book_author = BookAuthors {
+                book_id: book.book_id,
+                author_id: created_author.author_id,
+            };
+
+            book_author_repo.add(new_book_author).await?;
+        } else {
+            let author = existing_author.unwrap();
+
+            // Link author to book
+            let new_book_author = BookAuthors {
+                book_id: book.book_id,
+                author_id: author.author_id,
+            };
+            book_author_repo.add(new_book_author).await?;
+        }
+    }
+
+    Ok(())
 }
 
 /// Checks if a book with the given checksum already exists in the database.
