@@ -1,7 +1,4 @@
-use rbook::ebook::metadata;
-use tauri::utils::config::parse;
-
-use crate::data::models::books::{Books, UpdateBook};
+use crate::data::models::books::{UpdateBook};
 use crate::data::repos::implementors::book_repo::BookRepo;
 use crate::data::repos::traits::repository::Repository;
 use crate::handlers::epub_handler::{parse_epub_meta, BookMetadata};

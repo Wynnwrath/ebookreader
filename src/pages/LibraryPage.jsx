@@ -30,6 +30,10 @@ export default function LibraryPage() {
       const mapped = mapBooks(raw);
       setBooks(mapped);
       localStorage.setItem("library_books_cache", JSON.stringify(mapped));
+      
+      // ✅ 1. THE SIGNAL: Tell the rest of the app the data changed
+      window.dispatchEvent(new Event("book-list-updated"));
+
     } catch (err) {
       console.error("list_books failed:", err);
       setError("Failed to load books from backend.");
@@ -64,7 +68,7 @@ export default function LibraryPage() {
       for (const path of paths) {
         try { await invoke("import_book", { path }); } catch (err) { console.error(err); }
       }
-      await fetchBooks();
+      await fetchBooks(); // This triggers the signal
     } catch (err) {
       console.error(err);
     } finally {
@@ -82,7 +86,7 @@ export default function LibraryPage() {
       });
       if (!selectedPath) return;
       await invoke("scan_books_directory", { directoryPath: selectedPath });
-      await fetchBooks();
+      await fetchBooks(); // This triggers the signal
     } catch (err) {
       console.error(err);
       setError("Folder import failed.");
@@ -97,26 +101,13 @@ export default function LibraryPage() {
         <h1 className="text-2xl font-semibold">Library</h1>
 
         <div className="flex gap-2">
-          <button
-            onClick={handleImportFiles}
-            disabled={importing}
-            className="px-3 py-2 rounded bg-orange-500 hover:bg-orange-600 disabled:opacity-50 transition-colors"
-          >
+          <button onClick={handleImportFiles} disabled={importing} className="px-3 py-2 rounded bg-orange-500 hover:bg-orange-600 disabled:opacity-50 transition-colors">
             {importing ? "Importing..." : "Import File(s)"}
           </button>
-
-          <button
-            onClick={handleImportFolder}
-            disabled={importing}
-            className="px-3 py-2 rounded bg-orange-600 hover:bg-orange-700 disabled:opacity-50 transition-colors"
-          >
+          <button onClick={handleImportFolder} disabled={importing} className="px-3 py-2 rounded bg-orange-600 hover:bg-orange-700 disabled:opacity-50 transition-colors">
             {importing ? "Importing..." : "Import Folder"}
           </button>
-
-          <button
-            onClick={() => { setLoading(true); fetchBooks(); }}
-            className="px-3 py-2 rounded bg-white/10 hover:bg-white/20 transition-colors"
-          >
+          <button onClick={() => { setLoading(true); fetchBooks(); }} className="px-3 py-2 rounded bg-white/10 hover:bg-white/20 transition-colors">
             Refresh
           </button>
         </div>
@@ -136,17 +127,7 @@ export default function LibraryPage() {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 lg:gap-10 pb-20">
           {books.map((b, index) => (
-            // --- ANIMATION WRAPPER ---
-            <div
-              key={b.id}
-              className="animate-pop-in flex justify-center"
-              style={{
-                opacity: 0, // Start invisible
-                animationFillMode: 'forwards',
-                animationDuration: '0.4s',
-                animationDelay: `${index * 50}ms` // Stagger: 50ms per item
-              }}
-            >
+            <div key={b.id} className="animate-pop-in flex justify-center" style={{ opacity: 0, animationFillMode: 'forwards', animationDuration: '0.4s', animationDelay: `${index * 50}ms` }}>
               <BookCard {...b} />
             </div>
           ))}

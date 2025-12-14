@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* ✅ THIS IS THE FIX 
+/* THIS IS THE FIX 
   By defining these inside @theme, we force Tailwind to create 
   classes like 'bg-sidebar', 'text-primary', etc. that map 
   directly to your theme.css variables.

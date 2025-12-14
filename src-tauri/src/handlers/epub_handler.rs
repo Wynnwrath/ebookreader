@@ -153,7 +153,13 @@ pub async fn get_epub_content(
         let epub = Epub::open(&path_str).map_err(|e| e.to_string())?;
         let mut combined_html = String::new();
 
-        let img_re = Regex::new(r#"<img[^>]+src="([^"]+)"[^>]*>"#).unwrap();
+        // Regex for <img> tags: matches <img ... src="...">
+        // Capture groups: 1=prefix(inc quote), 2=url, 3=suffix(inc quote)
+        // We use a simplified pattern that handles ' or " quotes
+        let img_re = Regex::new(r#"(?i)(<img[^>]*?src=["'])([^"']+)(["'][^>]*?>)"#).unwrap();
+
+        // Regex for <image> tags (SVG): matches <image ... xlink:href="..."> or href="..."
+        let image_re = Regex::new(r#"(?i)(<image[^>]*?(?:xlink:)?href=["'])([^"']+)(["'][^>]*?>)"#).unwrap();
 
         let spine = epub.spine().entries().collect::<Vec<_>>();
 
@@ -161,37 +167,61 @@ pub async fn get_epub_content(
             if let Some(resource) = epub.manifest().by_id(item_ref.idref()) {
                 if resource.resource_kind().as_str() == "application/xhtml+xml" {
                     if let Ok(content) = epub.read_resource_str(resource.resource()) {
-                        let mut modified_content = content.clone();
+                        // 1. Process <img> tags
+                        let content_img_processed = img_re.replace_all(&content, |caps: &regex::Captures| {
+                            let prefix = &caps[1];
+                            let src = &caps[2];
+                            let suffix = &caps[3];
 
-                        for cap in img_re.captures_iter(&content) {
-                            let src = &cap[1];
-                            if !src.starts_with("data:") {
-                                // Get the directory of the current resource
-                                let current_href = resource.href().as_str();
-                                let resolved_href =
-                                    if let Some(parent) = Path::new(current_href).parent() {
-                                        parent.join(src).to_string_lossy().to_string()
-                                    } else {
-                                        src.to_string()
-                                    };
+                            if src.starts_with("data:") || src.starts_with("http") {
+                                return caps[0].to_string();
+                            }
 
-                                if let Some(image_resource) =
-                                    epub.manifest().by_href(&resolved_href)
-                                {
-                                    if let Ok(image_bytes) = image_resource.read_bytes() {
-                                        let encoded =
-                                            general_purpose::STANDARD.encode(&image_bytes);
-                                        let kind = image_resource.resource_kind();
-                                        let mime_type = kind.as_str();
-                                        let data_url =
-                                            format!("data:{};base64,{}", mime_type, encoded);
-                                        modified_content = modified_content.replace(src, &data_url);
-                                    }
+                            // Resolve path
+                            let current_href = resource.href().as_str();
+                            let resolved_href = resolve_path(current_href, src);
+
+                            // Load and encode image
+                            if let Some(image_resource) = epub.manifest().by_href(&resolved_href) {
+                                if let Ok(image_bytes) = image_resource.read_bytes() {
+                                    let encoded = general_purpose::STANDARD.encode(&image_bytes);
+                                    let kind = image_resource.resource_kind();
+                                    let mime_type = kind.as_str();
+                                    let data_url = format!("data:{};base64,{}", mime_type, encoded);
+                                    return format!("{}{}{}", prefix, data_url, suffix);
                                 }
                             }
-                        }
+                            // Fallback: return original
+                            caps[0].to_string()
+                        });
 
-                        let document = Html::parse_document(&modified_content);
+                        // 2. Process <image> tags
+                        let content_final = image_re.replace_all(&content_img_processed, |caps: &regex::Captures| {
+                            let prefix = &caps[1];
+                            let src = &caps[2];
+                            let suffix = &caps[3];
+
+                             if src.starts_with("data:") || src.starts_with("http") {
+                                return caps[0].to_string();
+                            }
+
+                            // Resolve path
+                            let current_href = resource.href().as_str();
+                            let resolved_href = resolve_path(current_href, src);
+
+                            if let Some(image_resource) = epub.manifest().by_href(&resolved_href) {
+                                if let Ok(image_bytes) = image_resource.read_bytes() {
+                                    let encoded = general_purpose::STANDARD.encode(&image_bytes);
+                                    let kind = image_resource.resource_kind();
+                                    let mime_type = kind.as_str();
+                                    let data_url = format!("data:{};base64,{}", mime_type, encoded);
+                                    return format!("{}{}{}", prefix, data_url, suffix);
+                                }
+                            }
+                            caps[0].to_string()
+                        });
+
+                        let document = Html::parse_document(&content_final);
                         let body_selector = Selector::parse("body").unwrap();
                         if let Some(body_node) = document.select(&body_selector).next() {
                             combined_html.push_str(&body_node.inner_html());
@@ -204,6 +234,38 @@ pub async fn get_epub_content(
     })
     .await?
     .map_err(|e: String| e.into())
+}
+
+fn resolve_path(base_href: &str, relative_path: &str) -> String {
+    if let Some(parent) = Path::new(base_href).parent() {
+        // Simple join
+        let joined = parent.join(relative_path);
+        
+        // Normalize (handle .. and .) manually
+        let mut components = Vec::new();
+        let mut is_absolute = false;
+
+        for component in joined.components() {
+            match component {
+                std::path::Component::RootDir => { is_absolute = true; },
+                std::path::Component::Normal(c) => components.push(c),
+                std::path::Component::ParentDir => { components.pop(); },
+                _ => {} // Ignore CurDir, Prefix
+            }
+        }
+        
+        let mut result = PathBuf::new();
+        if is_absolute {
+             // On Unix, pushing "/" makes it absolute. On Windows, it's more complex but EPUB internal paths are usually unix-style.
+             result.push("/");
+        }
+        for c in components {
+            result.push(c);
+        }
+        result.to_string_lossy().to_string()
+    } else {
+        relative_path.to_string()
+    }
 }
 /// Stores metadata to disk as a JSON file alongside the EPUB file.
 /// Returns the path to the created metadata JSON file.
