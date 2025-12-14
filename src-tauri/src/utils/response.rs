@@ -4,7 +4,7 @@ use crate::data::{
     models::books::Books,
     repos::{
         implementors::{
-            author_repo::AuthorRepo, book_author_repo::BookAuthorRepo,
+            book_author_repo::BookAuthorRepo,
             publisher_repo::PublisherRepo,
         },
         traits::repository::Repository,

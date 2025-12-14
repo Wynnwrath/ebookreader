@@ -1,7 +1,6 @@
 use crate::data::models::authors::NewAuthor;
 use crate::data::models::book_authors::BookAuthors;
 use crate::data::repos::implementors::author_repo::AuthorRepo;
-use crate::data::repos::implementors::book_author_repo;
 use crate::data::{models::annotations::NewAnnotation, repos::implementors::book_author_repo::BookAuthorRepo};
 use crate::data::models::bookmarks::NewBookmark;
 use crate::data::models::books::NewBook;
@@ -248,6 +247,11 @@ pub async fn add_book_from_file<P: AsRef<Path> + Send + 'static>(path: P) -> Res
     let metadata =
         crate::handlers::epub_handler::parse_epub_meta(path.as_ref().to_string_lossy().to_string())
             .await
-            .unwrap();
+            .map_err(|e| {
+                Error::DatabaseError(
+                    diesel::result::DatabaseErrorKind::Unknown,
+                    Box::new(format!("Failed to parse EPUB metadata: {}", e)),
+                )
+            })?;
     add_book_from_metadata(&metadata, None).await
 }
