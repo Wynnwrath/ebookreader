@@ -11,6 +11,7 @@ import "./App.css";
 import "./theme.css";
 import PlainLayout from "./layout/PlainLayout";
 import { HelpPage, SettingsPage } from "./pages/InfoPages";
+import ProfilePage from "./pages/ProfilePage.jsx";
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
         <Route path="/home" element={<HomePage />} />
         <Route path="/library" element={<LibraryPage />} />
         <Route path="/book/:id" element={<BookPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
       </Route>
     </Routes>
   );

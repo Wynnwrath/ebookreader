@@ -32,7 +32,7 @@ export default function HeaderRight() {
     {
       label: "Profile",
       icon: <CgProfile className="text-lg" />,
-      action: () => console.log("Profile clicked"),
+      action: () => navigate("/profile"),
     },
     {
       label: "Settings",
