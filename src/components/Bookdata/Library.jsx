@@ -10,11 +10,12 @@ export default function Library() {
   const [loading, setLoading] = useState(true);
 
   // --- 1. DATA FETCHING & MAPPING ---
-  // Maps backend data and reads immediate progress from LocalStorage
+  // Maps backend data and reads progress from LocalStorage
   const mapBooks = (raw) => {
     if (!Array.isArray(raw)) return [];
     
     return raw.map((b) => {
+      // Get saved progress (0 to 100)
       const savedProgress = localStorage.getItem(`book_progress_${b.book_id}`);
       const progress = savedProgress ? parseFloat(savedProgress) : 0;
 
@@ -33,10 +34,15 @@ export default function Library() {
   };
 
   const fetchBooks = async () => {
-    setLoading(true);
     try {
       const raw = await invoke("list_books");
+      
+      // Cache raw data
+      localStorage.setItem("library_raw_cache", JSON.stringify(raw));
+      
+      // Update state with mapped data (including latest progress)
       setBooks(mapBooks(raw));
+      
     } catch (err) {
       console.error("list_books failed:", err);
     } finally {
@@ -45,6 +51,19 @@ export default function Library() {
   };
 
   useEffect(() => {
+    // CACHE FIRST: Load immediately for instant UI
+    const cachedRaw = localStorage.getItem("library_raw_cache");
+    if (cachedRaw) {
+      try {
+        const raw = JSON.parse(cachedRaw);
+        setBooks(mapBooks(raw));
+        setLoading(false);
+      } catch (e) {
+        console.error("Failed to parse library cache", e);
+      }
+    }
+
+    // Then fetch fresh data
     fetchBooks();
   }, []);
 
@@ -52,6 +71,11 @@ export default function Library() {
 
   const continueReadingBooks = useMemo(() => {
     return books.filter(b => b.progress > 0 && b.progress < 100);
+  }, [books]);
+
+  // Completed Books Category
+  const completedBooks = useMemo(() => {
+    return books.filter(b => b.progress >= 100);
   }, [books]);
 
   const recentlyAddedBooks = useMemo(() => {
@@ -95,14 +119,23 @@ export default function Library() {
               />
             )}
 
-            {/* 2. Recently Added */}
+            {/* 2. Completed Books (New Section) */}
+            {completedBooks.length > 0 && (
+              <BookSlider
+                books={completedBooks}
+                title="Completed"
+                onBookClick={handleBookOpen}
+              />
+            )}
+
+            {/* 3. Recently Added */}
             <BookSlider
               books={recentlyAddedBooks}
               title="Recently Added"
               onBookClick={handleBookOpen}
             />
 
-            {/* 3. All Books */}
+            {/* 4. All Books */}
             <BookSlider
               books={books}
               title="All Books"

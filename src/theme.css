@@ -1,56 +1,58 @@
 @import url("https://fonts.googleapis.com/css2?family=Roboto&display=swap");
-@theme {
-  --font-roboto: "Roboto", sans-serif; 
-}
+
 :root {
-  --color-primary: #fc6551;  /* blue */
-  --color-secondary: #f59e0b; /* amber */
-  --color-bg: #fff3f3;        /* white background */
-  --color-text: #111827;      /* dark gray text */
-  --color-header: #fffefe;
+  /* === 1. BACKGROUNDS (Make these OPAQUE) === */
+  /* Main app background */
+  --color-bg: #130f1a;
+  
+  /* Cards like "Last Read" and "Dropdowns" - THIS WAS MISSING */
+  --color-surface: #1e1b2e; 
+  
+  /* Sidebar specific color */
+  --color-sidebar: rgba(49, 40, 61, 0.95); 
+  
+  /* Header specific color */
+  --color-header: rgba(26, 20, 34, 0.95);
+
+  /* === 2. ACCENTS === */
+  --color-primary: #fb923c;     /* Orange (Highlights) */
+  --color-secondary: #B000FF;   /* Violet (Glows) */
+  --color-tertiary: #3b82f6;    /* Blue */
+  --color-glow: #FF6B00;        /* Deep Orange Glow */
+  
+  /* === 3. TEXT === */
+  --color-text: #ffffff;
+  --color-text-dim: #9ca3af;    /* Gray-400 */
+  
+  /* === 4. GLASS & BORDERS === */
+  /* Used for buttons and search bars */
+  --color-glass: rgba(30, 27, 46, 0.60);
+  --color-border: rgba(255, 255, 255, 0.1);
+  
+  /* === 5. SHADOWS === */
+  --shadow-glow: 0 0 20px rgba(176, 0, 255, 0.15);
+
+  /* === 6. FONTS === */
+  --font-roboto: "Roboto", sans-serif;
 }
 
-[data-theme="dark"] {
-  --color-primary: #2563eb;   /* darker blue */
-  --color-secondary: #d97706; /* darker amber */
-  --color-bg: #1e293b;        /* dark background */
-  --color-text: #f9fafb;      /* light text */
+/* GLOBAL RESET */
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-roboto);
+  margin: 0;
 }
 
-/* Customize the track, thumb, and width for WebKit browsers */
-.custom-scrollbar {
-    /* The entire scrollbar area */
-    scrollbar-width: thin; /* Firefox (Non-standard property) */
-    scrollbar-color: #B000FF #1A1324; /* Firefox (Thumb color, Track color) */
-}
+/* SCROLLBARS */
+.custom-scrollbar { scrollbar-width: thin; scrollbar-color: var(--color-secondary) var(--color-bg); }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--color-bg); border-radius: 10px; }
+::-webkit-scrollbar-thumb { background-color: var(--color-secondary); border-radius: 10px; border: 2px solid var(--color-bg); }
 
-.custom-scrollbar::-webkit-scrollbar {
-    width: 8px; /* Width of the vertical scrollbar */
-    height: 8px; /* Height of the horizontal scrollbar */
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: #1A1324; /* Use your stellar-dark color */
-    border-radius: 10px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: #B000FF; /* Use your stellar-accent color for the thumb */
-    border-radius: 10px;
-    border: 2px solid #1A1324; /* Padding around the thumb */
-}
-
+/* ANIMATIONS */
 @keyframes popIn {
-  0% {
-    opacity: 0;
-    transform: scale(0.95) translateY(10px);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
+  0% { opacity: 0; transform: scale(0.95) translateY(10px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
 }
-
-.animate-pop-in {
-  animation: popIn 1.3s ease-out forwards;
-}
+.animate-pop-in { animation: popIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }

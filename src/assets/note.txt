@@ -1,5 +1,7 @@
 TO DO:
     - Bookmarks maniga
+    - Chapter navigation
+    - Image html
     - Make it theme-able (less prio)
 
 Semi-completed:

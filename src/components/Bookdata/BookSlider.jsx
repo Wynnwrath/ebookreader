@@ -7,15 +7,14 @@ export default function BookSlider({ books = [], title, onBookClick }) {
   const [visibleCount, setVisibleCount] = useState(5); 
 
   // --- RESPONSIVE SETTINGS ---
-  // Adjusted to ensure arrows appear if you have > 6 books
   useEffect(() => {
     const updateVisibleCount = () => {
       const width = window.innerWidth;
-      if (width < 640) setVisibleCount(2);       // Mobile: 2 books
-      else if (width < 768) setVisibleCount(3);  // Tablet Portrait: 3 books
-      else if (width < 1280) setVisibleCount(4); // Laptop: 4 books
-      else if (width < 1536) setVisibleCount(5); // Desktop: 5 books
-      else setVisibleCount(6);                   // Large Screens: 6 books
+      if (width < 640) setVisibleCount(2);       
+      else if (width < 768) setVisibleCount(3);  
+      else if (width < 1280) setVisibleCount(4); 
+      else if (width < 1536) setVisibleCount(5); 
+      else setVisibleCount(6);                   
     };
 
     updateVisibleCount();
@@ -23,13 +22,9 @@ export default function BookSlider({ books = [], title, onBookClick }) {
     return () => window.removeEventListener("resize", updateVisibleCount);
   }, []);
 
-  // Calculate pages
   const totalPages = visibleCount > 0 ? Math.ceil(books.length / visibleCount) : 0;
-  
-  // Show arrows only if we have more books than can fit on one screen
   const showArrows = books.length > visibleCount;
 
-  // Reset to page 0 if books change (e.g., refresh)
   useEffect(() => {
     setCurrentPage(0);
   }, [books.length]);
@@ -90,16 +85,30 @@ export default function BookSlider({ books = [], title, onBookClick }) {
       </div>
 
       {/* Books Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 min-h-[300px]">
-        {visibleBooks.map((book) => (
-          <BookCard
+      {/* key={currentPage} forces the grid to re-render (and re-animate) when page changes */}
+      <div 
+        key={currentPage}
+        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 min-h-[300px]"
+      >
+        {visibleBooks.map((book, index) => (
+          <div
             key={book.id}
-            {...book}
-            onClick={() => onBookClick && onBookClick(book)}
-          />
+            className="animate-pop-in flex justify-center" // Center helps align cards in grid cells
+            style={{ 
+              opacity: 0, // Start invisible so animation can fade it in
+              animationFillMode: 'forwards', 
+              animationDuration: '0.4s', // Faster than the default 1.3s
+              animationDelay: `${index * 75}ms` // Stagger effect
+            }}
+          >
+            <BookCard
+              {...book}
+              onClick={() => onBookClick && onBookClick(book)}
+            />
+          </div>
         ))}
         
-        {/* Fillers to keep height stable if last page has few books */}
+        {/* Fillers to keep height stable */}
         {Array.from({ length: visibleCount - visibleBooks.length }).map((_, i) => (
            <div key={`empty-${i}`} className="hidden md:block" />
         ))}

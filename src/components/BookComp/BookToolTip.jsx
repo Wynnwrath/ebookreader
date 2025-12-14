@@ -8,36 +8,40 @@ export default function BookTooltip({ title, author, pages, rating }) {
     ">
       <div className="
         relative flex flex-col gap-1.5 p-3 text-center
-        bg-[#1a1625]/95 backdrop-blur-xl
-        border border-white/10 rounded-xl
-        shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)]
+        /* UPDATED COLORS */
+        bg-surface/95 backdrop-blur-xl
+        border border-border rounded-xl
+        shadow-lg
       ">
         <div className="flex flex-col">
-          <span className="font-bold text-white text-xs leading-tight line-clamp-2">
+          <span className="font-bold text-text text-xs leading-tight line-clamp-2">
             {title}
           </span>
-          <span className="text-[10px] text-gray-400 italic mt-0.5 truncate">
+          <span className="text-[10px] text-text-dim italic mt-0.5 truncate">
             {author || "Unknown Author"}
           </span>
         </div>
 
-        <div className="w-full h-px bg-white/5 my-0.5" />
+        <div className="w-full h-px bg-border my-0.5" />
 
         <div className="flex items-center justify-center gap-3">
           {pages > 0 && (
-            <span className="text-[10px] text-gray-500 font-mono">
+            <span className="text-[10px] text-text-dim font-mono">
               {pages}p
             </span>
           )}
           {rating > 0 && (
              <div className="flex items-center gap-0.5">
-               <span className="text-[10px] text-yellow-500 font-bold">{rating}</span>
-               <span className="text-[8px] text-yellow-500/80">★</span>
+               {/* Matches the theme's primary accent */}
+               <span className="text-[10px] text-primary font-bold">{rating}</span>
+               <span className="text-[8px] text-primary/80">★</span>
              </div>
           )}
         </div>
 
-        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-4 border-transparent border-t-[#1a1625]/95" />
+        {/* The little arrow triangle at the bottom */}
+        {/* Note: border-t-surface/95 ensures it blends with the tooltip body */}
+        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-4 border-transparent border-t-surface/95" />
       </div>
     </div>
   );

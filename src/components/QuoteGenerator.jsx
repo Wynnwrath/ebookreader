@@ -35,14 +35,13 @@ export default function QuoteGenerator() {
   }, []);
 
   return (
-    // [grid-area:quote] matches HomePage.
     <div className="[grid-area:quote] w-full h-full p-2">
       
       <div className="
         relative w-full h-full 
         rounded-2xl overflow-hidden 
-        shadow-lg shadow-black/20
-        border border-white/10
+        shadow-lg
+        border border-border
         group
       ">
         {/* Background Image */}
@@ -51,15 +50,15 @@ export default function QuoteGenerator() {
           style={{ backgroundImage: `url(${backgroundImage})` }}
         />
         
-        {/* Overlay */}
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px]" />
+        {/* Overlay - Uses Theme BG color for better integration */}
+        <div className="absolute inset-0 bg-bg/70 backdrop-blur-[1px]" />
 
         {/* Content */}
         <div className="relative z-10 w-full h-full flex flex-col p-6 sm:p-8">
           
           {/* Tag */}
           <div className="w-full flex justify-start">
-            <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-md">
+            <span className="bg-tertiary text-text px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-md">
               Quote Today
             </span>
           </div>
@@ -67,14 +66,14 @@ export default function QuoteGenerator() {
           {/* Text Centered */}
           <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
             {loading ? (
-              <p className="text-white/50 animate-pulse">Loading...</p>
+              <p className="text-text-dim animate-pulse">Loading...</p>
             ) : (
               <>
-                <p className="font-serif text-xl sm:text-2xl md:text-3xl text-white leading-relaxed drop-shadow-lg max-w-2xl">
+                <p className="font-serif text-xl sm:text-2xl md:text-3xl text-text leading-relaxed drop-shadow-lg max-w-2xl">
                   “{quote}”
                 </p>
-                <div className="w-12 h-1 bg-blue-500 rounded-full my-4 opacity-50" />
-                <p className="text-gray-300 italic text-sm sm:text-base">
+                <div className="w-12 h-1 bg-tertiary rounded-full my-4 opacity-50" />
+                <p className="text-text-dim italic text-sm sm:text-base">
                   — {author}
                 </p>
               </>

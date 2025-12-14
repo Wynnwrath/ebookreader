@@ -17,11 +17,13 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
   return (
     <aside
       className={`
-        bg-[rgba(49,40,61,0.86)] 
+        /* This now uses your exact rgba(49,40,61,0.86) tint */
+        bg-sidebar 
         backdrop-blur-md         
-        text-white
+        text-text
         p-4 flex flex-col justify-between
         transition-all duration-300 h-full
+        border-r border-border
       `}
     >
       {/* Logo Section */}
@@ -30,9 +32,9 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
           isExpanded ? "justify-start" : "justify-center"
         }`}
       >
-        <IoBook size={36} className="text-gray-100" />
+        <IoBook size={36} className="text-text-dim" />
         {isExpanded && (
-          <span className="text-xl font-semibold ml-3 text-white tracking-wide">
+          <span className="text-xl font-semibold ml-3 text-text tracking-wide">
             Stellaron
           </span>
         )}
@@ -48,8 +50,8 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
               `flex items-center gap-3 p-2 rounded-md transition-all duration-200
               ${
                 isActive
-                  ? "bg-white/10 text-orange-400"
-                  : "text-gray-100 hover:text-orange-300 hover:bg-white/5"
+                  ? "bg-glass text-primary shadow-sm"
+                  : "text-text-dim hover:text-primary hover:bg-glass"
               }
               ${isExpanded ? "justify-start" : "justify-center"}`
             }
@@ -63,9 +65,9 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
       {/* Collapse / Expand Button */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className={`flex items-center p-2 rounded-md hover:bg-white/10 transition-all duration-300 ${
+        className={`flex items-center p-2 rounded-md hover:bg-glass transition-all duration-300 ${
           isExpanded ? "justify-start" : "justify-center"
-        } text-gray-300 hover:text-orange-400`}
+        } text-text-dim hover:text-primary`}
       >
         {isExpanded ? (
           <RiExpandLeftLine size={26} />

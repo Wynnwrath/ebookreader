@@ -18,17 +18,19 @@ export default function BookProgress({
 
   return (
     <div className={`flex flex-col items-center gap-1 ${className}`}>
-      <div className="flex justify-between w-full text-xs text-gray-400 px-1 font-mono">
+      <div className="flex justify-between w-full text-xs text-text-dim px-1 font-mono">
         <span>Progress</span>
-        {/* 'tabular-nums' ensures numbers are same width. 'w-[3rem]' reserves fixed space. */}
+        {/* 'tabular-nums' ensures numbers are same width. */}
         <span className="tabular-nums text-right w-[3rem]">
           {safeProgress.toFixed(0)}%
         </span>
       </div>
       
-      <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+      {/* Progress Track */}
+      <div className="w-full h-1.5 rounded-full bg-glass overflow-hidden">
+        {/* Progress Fill */}
         <div
-          className="h-full rounded-full bg-orange-500 transition-all duration-300 ease-out"
+          className="h-full rounded-full bg-primary transition-all duration-300 ease-out shadow-[0_0_10px_rgba(255,107,0,0.3)]"
           style={{ width: `${safeProgress}%` }}
         />
       </div>
