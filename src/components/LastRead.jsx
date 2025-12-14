@@ -1,91 +1,126 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import StarRate from '../assets/StarRate';
-import ebookCover from '../images/bookCover.png';
+import defaultCover from '../images/bookCover.png'; 
 
 export default function LastRead() {
+  const navigate = useNavigate();
+  const [lastBook, setLastBook] = useState(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("last_read_book");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const specificProgress = localStorage.getItem(`book_progress_${parsed.id}`);
+        if (specificProgress) {
+            parsed.progress = parseFloat(specificProgress);
+        }
+        setLastBook(parsed);
+      } catch (e) {
+        console.error("Failed to parse last read book", e);
+      }
+    }
+  }, []);
 
   const handleContinueReading = () => {
-  console.log("[LastRead] READ TODAY clicked");
-  // later:
-  // navigate(`/reader/${bookId}`);
-  // invoke("continue_reading", { bookId });
+    if (!lastBook) return;
+    navigate(`/book/${lastBook.id}`, {
+      state: { 
+        book: {
+          id: lastBook.id,
+          title: lastBook.title,
+          author: lastBook.author,
+          filePath: lastBook.filePath,
+          progress: lastBook.progress 
+        },
+        preloadedCover: lastBook.coverImage
+      }
+    });
   };
 
+  if (!lastBook) {
+    return (
+      <div className="[grid-area:last] w-full h-full p-2">
+        <div className="
+          w-full h-full flex flex-col items-center justify-center 
+          /* THEME COLORS */
+          bg-surface border border-border 
+          rounded-2xl p-6 shadow-lg backdrop-blur-md
+        ">
+           <span className="text-4xl mb-2 opacity-50">📚</span>
+           <p className="text-text-dim text-sm font-medium">No recent reads yet.</p>
+           <p className="text-text-dim text-xs mt-1 opacity-70">Start a book to see it here.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="[grid-area: last] p-4 sm:p-6 lg:p-8 flex justify-center items-center h-full">
-      {/* Outer Card */}
-      <div
-        className="
-          w-full h-auto 
-          flex flex-col sm:flex-row 
-          items-center sm:items-start justify-center 
-          rounded-xl shadow-md 
-          bg-[rgba(42,36,50,0.86)] 
-          backdrop-blur-md  text-stellar-light
-          border border-white/10
-          p-5
-          transition-all duration-300
-        "
-      >
+    <div className="[grid-area:last] w-full h-full">
+      <div className="
+        w-full h-full
+        flex flex-row items-center gap-6
+        /* THEME COLORS */
+        bg-surface
+        border border-border 
+        rounded-2xl
+        p-6 sm:p-8
+        shadow-lg
+        relative overflow-hidden
+        group
+      ">
+        
         {/* Book Cover */}
-        <div className="flex justify-center sm:justify-start mb-4 sm:mb-0">
+        <div className="relative shrink-0 w-32 h-48 sm:w-40 sm:h-56 shadow-2xl rounded-lg overflow-hidden group-hover:scale-105 transition-transform duration-500">
           <img
-            src={ebookCover}
-            alt="Book cover"
-            className="
-              h-40 w-28
-              sm:h-48 sm:w-32
-              md:h-56 md:w-36
-              lg:h-64 lg:w-44
-              rounded-lg shadow-md object-cover
-              transition-transform duration-300 hover:scale-105
-            "
+            src={lastBook.coverImage || defaultCover}
+            alt={lastBook.title}
+            className="w-full h-full object-cover"
+            onError={(e) => { e.target.src = defaultCover; }} 
           />
         </div>
 
-        {/* Book Details */}
-        <div
-          className="
-            flex flex-col 
-            gap-2 sm:gap-3 md:gap-4 
-            sm:ml-4 md:ml-6 
-            text-center sm:text-left 
-            w-full sm:w-auto
-          "
-        >
-          {/* Title */}
-          <h1
+        {/* Text Content */}
+        <div className="flex flex-col justify-center min-w-0 z-10 h-full">
+          
+          <div className="flex flex-col gap-1 mb-3">
+            <span className="text-[10px] font-bold text-primary uppercase tracking-widest">
+              Continue Reading
+            </span>
+            
+            <h2 className="text-text text-lg font-normal leading-snug">
+              Did you read <br />
+              <span className="text-text font-bold text-xl sm:text-2xl truncate block" title={lastBook.title}>
+                {lastBook.title}
+              </span>
+            </h2>
+            
+            <p className="text-xs text-text-dim font-light mt-0.5 truncate">
+              by {lastBook.author || "Unknown"}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 mb-4">
+            <StarRate rating={lastBook.rating || 0} />
+            <span className="text-xs text-text-dim font-medium pt-0.5">
+              {lastBook.rating ? Number(lastBook.rating).toFixed(1) : "N/A"}
+            </span>
+          </div>
+
+          <button
+            onClick={handleContinueReading}
             className="
-              text-sm sm:text-base md:text-lg lg:text-xl 
-              leading-snug font-medium
+              w-fit px-6 py-2
+              /* THEME COLORS */
+              bg-glass hover:bg-white/10
+              text-xs sm:text-sm text-text font-medium tracking-wide
+              rounded-full transition-colors shadow-md border border-border
             "
           >
-            Did you read{" "}
-            <b className="whitespace-nowrap">The Lost World</b> by Arthur Conan Doyle?
-          </h1>
+            Read Today
+          </button>
 
-          {/* Rating */}
-          <div className="flex justify-center sm:justify-start">
-            <StarRate rating={4} />
-          </div>
-
-          {/* CTA Button */}
-          <div className="flex justify-center sm:justify-start mt-3 sm:mt-4">
-            <button
-              className="
-                bg-gray-500 hover:bg-gray-600 
-                flex items-center justify-center 
-                h-9 sm:h-10 md:h-11 
-                px-5 sm:px-8 md:px-10 
-                text-xs sm:text-sm md:text-base 
-                rounded-full shadow-md shadow-black/40
-                w-full sm:w-auto max-w-[200px]
-                transition-colors active:bg-gray-700 duration-150
-              "
-              onClick={handleContinueReading}
-            >
-              READ TODAY
-            </button>
-          </div>
         </div>
       </div>
     </div>

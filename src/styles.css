@@ -1,9 +1,47 @@
 @import "tailwindcss";
 
-
+/* ✅ THIS IS THE FIX 
+  By defining these inside @theme, we force Tailwind to create 
+  classes like 'bg-sidebar', 'text-primary', etc. that map 
+  directly to your theme.css variables.
+*/
 @theme {
-    --color-primary: #ff724f;
-    --color-secondary: #1c1c1e;
+  /* Backgrounds */
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-header: var(--color-header);
+  --color-sidebar: var(--color-sidebar);
+
+  /* Accents */
+  --color-primary: var(--color-primary);
+  --color-secondary: var(--color-secondary);
+  --color-tertiary: var(--color-tertiary);
+  --color-glow: var(--color-glow);
+
+  /* Text */
+  --color-text: var(--color-text);
+  --color-text-dim: var(--color-text-dim);
+
+  /* Glass & Borders */
+  --color-glass: var(--color-glass);
+  --color-border: var(--color-border);
+
+  /* Fonts */
+  --font-roboto: "Roboto", sans-serif;
+
+  /* Animations */
+  --animate-pop-in: popIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* --- Custom Classes & Utilities --- */
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 .spaceGlow {
@@ -26,25 +64,13 @@
 }
 
 @keyframes spaceGlow {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
-/* Hide scrollbar for Chrome, Safari and Opera */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
+/* Keyframes for the popIn animation used in @theme */
+@keyframes popIn {
+  0% { opacity: 0; transform: scale(0.95) translateY(10px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
 }
-
-/* Hide scrollbar for IE, Edge and Firefox */
-.no-scrollbar {
-  -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
-}
-

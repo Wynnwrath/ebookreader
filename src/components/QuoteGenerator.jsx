@@ -11,15 +11,13 @@ export default function QuoteGenerator() {
       setLoading(true);
       const response = await fetch("https://quotes-api-self.vercel.app/quote");
       const data = await response.json();
-
       localStorage.setItem("quoteData", JSON.stringify(data));
-
       setQuote(data.quote);
       setAuthor(data.author);
     } catch (error) {
       console.error("Error fetching quote:", error);
-      setQuote("Failed to load quote. Try again!");
-      setAuthor("");
+      setQuote("Never give up on your dreams.");
+      setAuthor("Unknown");
     } finally {
       setLoading(false);
     }
@@ -27,7 +25,6 @@ export default function QuoteGenerator() {
 
   useEffect(() => {
     const storedQuote = localStorage.getItem("quoteData");
-
     if (storedQuote) {
       const data = JSON.parse(storedQuote);
       setQuote(data.quote);
@@ -38,45 +35,50 @@ export default function QuoteGenerator() {
   }, []);
 
   return (
-    <div className="relative p-4 sm:p-6 md:p-8 lg:p-12">
-      {/* Tag */}
-      <div
-        className="absolute top-6 left-6 sm:top-8 sm:left-8 md:top-10 md:left-10 
-                   bg-blue-600 text-white px-3 sm:px-4 py-1 rounded-full 
-                   text-xs sm:text-sm md:text-base font-semibold italic 
-                   shadow-md shadow-black/40 z-20"
-      >
-        Quote Today
-      </div>
-
-      {/* Quote Box */}
-      <div
-        className="relative w-full max-w-5xl mx-auto rounded-xl overflow-hidden shadow-lg "
-        style={{ backgroundImage: `url(${backgroundImage})` }}
-      >
-        {/* Overlay for readability */}
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
+    <div className="[grid-area:quote] w-full h-full p-2">
+      
+      <div className="
+        relative w-full h-full 
+        rounded-2xl overflow-hidden 
+        shadow-lg
+        border border-border
+        group
+      ">
+        {/* Background Image */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
+          style={{ backgroundImage: `url(${backgroundImage})` }}
+        />
+        
+        {/* Overlay - Uses Theme BG color for better integration */}
+        <div className="absolute inset-0 bg-bg/70 backdrop-blur-[1px]" />
 
         {/* Content */}
-        <div className="relative flex flex-col items-center justify-center text-center p-6 sm:p-8 md:p-10 text-stellar-light z-10">
-          {loading ? (
-            <p className="text-lg sm:text-xl md:text-2xl animate-pulse text-stellar-glow">
-              Loading...
-            </p>
-          ) : (
-            <>
-              <p
-                className="font-semibold mb-4 
-                           text-[clamp(1rem,4vw,2.2rem)] 
-                           leading-relaxed text-white drop-shadow-lg"
-              >
-                “{quote}”
-              </p>
-              <p className="italic text-[clamp(0.8rem,2.5vw,1.2rem)] text-stellar-glow/80">
-                — {author}
-              </p>
-            </>
-          )}
+        <div className="relative z-10 w-full h-full flex flex-col p-6 sm:p-8">
+          
+          {/* Tag */}
+          <div className="w-full flex justify-start">
+            <span className="bg-tertiary text-text px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-md">
+              Quote Today
+            </span>
+          </div>
+
+          {/* Text Centered */}
+          <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
+            {loading ? (
+              <p className="text-text-dim animate-pulse">Loading...</p>
+            ) : (
+              <>
+                <p className="font-serif text-xl sm:text-2xl md:text-3xl text-text leading-relaxed drop-shadow-lg max-w-2xl">
+                  “{quote}”
+                </p>
+                <div className="w-12 h-1 bg-tertiary rounded-full my-4 opacity-50" />
+                <p className="text-text-dim italic text-sm sm:text-base">
+                  — {author}
+                </p>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -4,12 +4,12 @@ import GlassCard from "../../ui/GlassCard";
 
 export default function BookHeader({ onBack, onRemove }) {
   return (
-    <GlassCard className="flex items-center justify-between px-6 py-4">
+    <GlassCard className="flex items-center justify-between px-6 py-4 bg-glass border border-border">
       <div className="flex items-center gap-4">
         {/* Back Button */}
         <button
           onClick={onBack}
-          className="flex items-center gap-2 text-white hover:text-orange-400 transition-colors"
+          className="flex items-center gap-2 text-text hover:text-primary transition-colors"
         >
           <IoIosArrowRoundBack size={34} />
           <span className="text-lg font-medium">Back</span>
@@ -17,7 +17,7 @@ export default function BookHeader({ onBack, onRemove }) {
       </div>
 
       <div className="flex items-center gap-3">
-        {/* --- REMOVE BUTTON --- */}
+        {/* Remove Button */}
         {onRemove && (
           <button
             onClick={onRemove}
