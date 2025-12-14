@@ -19,6 +19,7 @@ function LoginPage() {
     const isValid = await invoke('login', {username: username, password: password})
 
     if (isValid) {
+      localStorage.setItem('username', username);
       navigate("/home");
     } else {
       setError("Invalid username or password.");
