@@ -10,6 +10,28 @@ export default function HeaderRight() {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
+  const [username, setUsername] = useState("Loading...");
+
+  useEffect(() => {
+    async function fetchUsername() {
+      try {
+        // First check localStorage
+        const storedUsername = localStorage.getItem('username');
+
+        if (storedUsername) {
+          const user = await invoke('get_account_info', { username: storedUsername });
+          setUsername(user.username || storedUsername);
+        } else {
+          setUsername("User");
+        }
+      } catch (error) {
+        console.error("Failed to fetch username:", error);
+        setUsername("User");
+      }
+    }
+
+    fetchUsername();
+  }, []);
 
   // Handle outside click
   useEffect(() => {
@@ -56,7 +78,7 @@ export default function HeaderRight() {
       >
         <CgProfile className="text-3xl text-white bg-gradient-to-br from-stellar-glow to-stellar-accent rounded-full p-1.5" />
         <h1 className="hidden md:block text-white font-medium">
-          Seth A. Pinca
+          {username}
         </h1>
         <MdKeyboardArrowDown
           className={`text-2xl text-white transition-transform ${
