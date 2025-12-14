@@ -12,6 +12,7 @@ use crate::services::book_service::{
     get_annotations as service_get_annotations, get_bookmarks as service_get_bookmarks,
     get_epub_content,
 };
+use crate::utils::response::BookResponse;
 use std::path::Path;
 
 /// Command to import an EPUB from a given file path
@@ -47,10 +48,24 @@ pub async fn read_epub(path: &str) -> Result<String, String> {
 /// * `Result<Vec<Books>, String>` - On success, returns a vector of Books; on failure, returns an error message
 /// Refer to `Books` struct in `data::models::books` for book details structure.
 #[tauri::command]
-pub async fn list_books() -> Result<Vec<Books>, String> {
+pub async fn list_books() -> Result<Vec<BookResponse>, String> {
     let repo = BookRepo::new().await;
-    let books = repo.get_all().await.map_err(|e| e.to_string())?;
-    Ok(books.unwrap_or_default())
+    let books_list = repo.get_all().await.map_err(|e| e.to_string())?;
+
+    let book_responses = match books_list {
+        Some(books) => {
+            let mut responses = Vec::new();
+            for book in books {
+                let response = BookResponse::from_book(book)
+                    .await
+                    .map_err(|e| e.to_string())?;
+                responses.push(response);
+            }
+            responses
+        }
+        None => Vec::new(),
+    };
+    Ok(book_responses)
 }
 
 /// Command to get book details by book ID
@@ -62,9 +77,19 @@ pub async fn list_books() -> Result<Vec<Books>, String> {
 /// Refer to `Books` struct in `data::models::books` for book details structure.
 /// NOTE: Option is used to handle cases where the book may not be found.
 #[tauri::command]
-pub async fn get_book_details(book_id: i32) -> Result<Option<Books>, String> {
+pub async fn get_book_details(book_id: i32) -> Result<Option<BookResponse>, String> {
     let repo = BookRepo::new().await;
-    repo.get_by_id(book_id).await.map_err(|e| e.to_string())
+    let book = repo.get_by_id(book_id).await.map_err(|e| e.to_string())?;
+
+    match book {
+        Some(b) => {
+            let response = BookResponse::from_book(b)
+                .await
+                .map_err(|e| e.to_string())?;
+            Ok(Some(response))
+        }
+        None => Ok(None),
+    }
 }
 
 /// Command to add a bookmark for a user in a specific book
