@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useNavigate } from "react-router-dom";
-import BookHistory from "./BookHistory";
+import BookHistory from "./BookHIstory";
 import BookSlider from "./BookSlider";
 
 export default function Library() {
