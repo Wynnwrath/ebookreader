@@ -5,10 +5,6 @@ TO DO:
     - Make it theme-able (less prio)
 
 Semi-completed:
-    - Tooltip (details displayed are not important yet)
-    - Add book progress (only from frontend currently)
-    - Lightmode darkmode (reader modal (only scrollbar left))
-    - Implement Book Progress (save it to localstorage, it needs to go to backend)
 
 COMPLETED:
     - Fix animation pop up main page (GOOD)
@@ -18,4 +14,7 @@ COMPLETED:
     - Book Searchbar
     - Star rating by user
     - Add books in home page
-
+    - Tooltip (details displayed are not important yet)
+    - Add book progress (only from frontend currently)
+    - Lightmode darkmode (reader modal (only scrollbar left))
+    - Implement Book Progress (save it to localstorage, it needs to go to backend)

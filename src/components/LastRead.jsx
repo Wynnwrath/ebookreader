@@ -1,22 +1,43 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { convertFileSrc } from "@tauri-apps/api/core"; // ✅ Import this
 import StarRate from '../assets/StarRate';
 import defaultCover from '../images/bookCover.png'; 
 
 export default function LastRead() {
   const navigate = useNavigate();
   const [lastBook, setLastBook] = useState(null);
+  const [coverSrc, setCoverSrc] = useState(""); // ✅ New state for the safe image URL
 
   useEffect(() => {
     const saved = localStorage.getItem("last_read_book");
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
+        
+        // Update progress from specific book storage if available
         const specificProgress = localStorage.getItem(`book_progress_${parsed.id}`);
         if (specificProgress) {
             parsed.progress = parseFloat(specificProgress);
         }
+        
         setLastBook(parsed);
+
+        // ✅ FIX: Convert the raw file path to a displayable URL immediately
+        if (parsed.coverImage) {
+          // Check if it's already a valid web URL or data string
+          const isWebUrl = /^(http|https|asset|tauri|blob|data):/.test(parsed.coverImage);
+          
+          if (isWebUrl) {
+            setCoverSrc(parsed.coverImage);
+          } else {
+            // It's a local file path, convert it!
+            setCoverSrc(convertFileSrc(parsed.coverImage));
+          }
+        } else {
+          setCoverSrc(defaultCover);
+        }
+
       } catch (e) {
         console.error("Failed to parse last read book", e);
       }
@@ -34,9 +55,14 @@ export default function LastRead() {
           filePath: lastBook.filePath,
           progress: lastBook.progress 
         },
-        preloadedCover: lastBook.coverImage
+        // Pass the pre-converted cover so the next page doesn't flicker
+        preloadedCover: coverSrc 
       }
     });
+  };
+
+  const handleImageError = () => {
+    setCoverSrc(defaultCover);
   };
 
   if (!lastBook) {
@@ -44,7 +70,6 @@ export default function LastRead() {
       <div className="[grid-area:last] w-full h-full p-2">
         <div className="
           w-full h-full flex flex-col items-center justify-center 
-          /* THEME COLORS */
           bg-surface border border-border 
           rounded-2xl p-6 shadow-lg backdrop-blur-md
         ">
@@ -61,7 +86,6 @@ export default function LastRead() {
       <div className="
         w-full h-full
         flex flex-row items-center gap-6
-        /* THEME COLORS */
         bg-surface
         border border-border 
         rounded-2xl
@@ -74,10 +98,10 @@ export default function LastRead() {
         {/* Book Cover */}
         <div className="relative shrink-0 w-32 h-48 sm:w-40 sm:h-56 shadow-2xl rounded-lg overflow-hidden group-hover:scale-105 transition-transform duration-500">
           <img
-            src={lastBook.coverImage || defaultCover}
+            src={coverSrc || defaultCover} // ✅ Use the safe 'coverSrc'
             alt={lastBook.title}
             className="w-full h-full object-cover"
-            onError={(e) => { e.target.src = defaultCover; }} 
+            onError={handleImageError} 
           />
         </div>
 
@@ -112,7 +136,6 @@ export default function LastRead() {
             onClick={handleContinueReading}
             className="
               w-fit px-6 py-2
-              /* THEME COLORS */
               bg-glass hover:bg-white/10
               text-xs sm:text-sm text-text font-medium tracking-wide
               rounded-full transition-colors shadow-md border border-border
