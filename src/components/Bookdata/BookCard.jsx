@@ -14,7 +14,7 @@ export default function BookCard({
   currentPage = 0,
   totalPages = 0,
   pages,
-  rating = 0, // Pass rating down so the tooltip can show it
+  rating = 0,
 }) {
   const navigate = useNavigate();
   const [imageError, setImageError] = useState(false);

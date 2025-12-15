@@ -163,8 +163,11 @@ export default function ReaderModal({
             ref={contentRef}
             onScroll={handleScroll}
             className={`
-              flex-1 overflow-y-auto px-8 py-8 md:px-16 text-lg leading-relaxed custom-scrollbar transition-colors duration-300 
-              ${isDarkMode ? "text-text" : "text-gray-900"}
+              flex-1 overflow-y-auto px-8 py-8 md:px-16 text-lg leading-relaxed transition-colors duration-300 
+              ${isDarkMode 
+                 ? "text-text custom-scrollbar"  // Dark Mode Scrollbar
+                 : "text-gray-900 light-scrollbar" // Light Mode Scrollbar
+              }
             `}
             style={{ fontFamily: 'Georgia, serif' }} 
             dangerouslySetInnerHTML={rawHtml}
