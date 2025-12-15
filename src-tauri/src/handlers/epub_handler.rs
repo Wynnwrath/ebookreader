@@ -86,7 +86,7 @@ pub async fn parse_epub_meta(
             .find(|i| i.value().starts_with("urn:isbn:"))
             .map(|i| i.value().to_string());
 
-        let cover_data = if let Some(cover_image) = book.manifest().images().next() {
+        let cover_data = if let Some(cover_image) = book.manifest().cover_image() {
             let mime_type = cover_image.resource_kind().as_str().to_string();
             cover_image
                 .read_bytes()
@@ -388,8 +388,7 @@ pub async fn get_cover_image_streamed(
     if let Some(book) = repo.get_by_id(id).await? {
         let epub = Epub::open(book.file_path.as_ref().ok_or("No file path")?)?;
 
-        let cover = epub.manifest().images().next();
-        match cover {
+        match epub.manifest().cover_image() {
             Some(cover_image) => {
                 let bytes = cover_image.read_bytes()?;
                 Ok(bytes.into())
