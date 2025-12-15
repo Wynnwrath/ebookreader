@@ -237,27 +237,31 @@ pub async fn get_epub_content(
 }
 
 fn resolve_path(base_href: &str, relative_path: &str) -> String {
-    if let Some(parent) = Path::new(base_href).parent() {
+    let resolved_path = if let Some(parent) = Path::new(base_href).parent() {
         // Simple join
         let joined = parent.join(relative_path);
-        
+
         // Normalize (handle .. and .) manually
         let mut components = Vec::new();
         let mut is_absolute = false;
 
         for component in joined.components() {
             match component {
-                std::path::Component::RootDir => { is_absolute = true; },
+                std::path::Component::RootDir => {
+                    is_absolute = true;
+                }
                 std::path::Component::Normal(c) => components.push(c),
-                std::path::Component::ParentDir => { components.pop(); },
+                std::path::Component::ParentDir => {
+                    components.pop();
+                }
                 _ => {} // Ignore CurDir, Prefix
             }
         }
-        
+
         let mut result = PathBuf::new();
         if is_absolute {
-             // On Unix, pushing "/" makes it absolute. On Windows, it's more complex but EPUB internal paths are usually unix-style.
-             result.push("/");
+            // On Unix, pushing "/" makes it absolute. On Windows, it's more complex but EPUB internal paths are usually unix-style.
+            result.push("/");
         }
         for c in components {
             result.push(c);
@@ -265,7 +269,10 @@ fn resolve_path(base_href: &str, relative_path: &str) -> String {
         result.to_string_lossy().to_string()
     } else {
         relative_path.to_string()
-    }
+    };
+
+    // EPUB internal paths must use forward slashes, even on Windows
+    resolved_path.replace('\\', "/")
 }
 /// Stores metadata to disk as a JSON file alongside the EPUB file.
 /// Returns the path to the created metadata JSON file.
