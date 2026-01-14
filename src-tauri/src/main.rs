@@ -6,7 +6,7 @@ use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use stellaron_lib::commands::*;
 use tauri::AppHandle;
 
-pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./src/data/migrations");
+pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./src/infrastructure/database/migrations");
 
 #[tokio::main]
 async fn main() {

@@ -46,6 +46,6 @@ futures = "0.3.31"
 
 # 👇 Force bundled SQLite
 [dependencies.libsqlite3-sys]
-version = "0.36.0"
+version = "^0.35"
 features = ["bundled"]
 
