@@ -1,0 +1,87 @@
+diesel::table! {
+    books (book_id) {
+        book_id -> Integer,
+        title -> Text,
+        published_date -> Nullable<Text>,
+        publisher_id -> Nullable<Integer>,
+        isbn -> Nullable<Text>,
+        file_type -> Text,
+        file_path -> Text,
+        cover_image_path -> Nullable<Text>,
+        checksum -> Nullable<Text>,
+        added_at -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    authors (author_id) {
+        author_id -> Integer,
+        name -> Text,
+    }
+}
+
+diesel::table! {
+    publishers (publisher_id) {
+        publisher_id -> Integer,
+        name -> Text,
+    }
+}
+
+diesel::table! {
+    book_authors (book_id, author_id) {
+        book_id -> Integer,
+        author_id -> Integer,
+    }
+}
+
+diesel::table! {
+    bookmarks (bookmark_id) {
+        bookmark_id -> Nullable<Integer>,
+        book_id -> Integer,
+        chapter_title -> Nullable<Text>,
+        page_number -> Nullable<Integer>,
+        position -> Text,
+        created_at -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    annotations (annotation_id) {
+        annotation_id -> Nullable<Integer>,
+        book_id -> Integer,
+        chapter_title -> Nullable<Text>,
+        start_position -> Text,
+        end_position -> Text,
+        highlighted_text -> Nullable<Text>,
+        note -> Nullable<Text>,
+        color -> Nullable<Text>,
+        created_at -> Nullable<Text>,
+        updated_at -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    reading_progress (progress_id) {
+        progress_id -> Nullable<Integer>,
+        book_id -> Integer,
+        current_position -> Text,
+        chapter_title -> Nullable<Text>,
+        page_number -> Nullable<Integer>,
+        progress_percentage -> Nullable<Float>,
+        last_read_at -> Nullable<Text>,
+    }
+}
+
+diesel::joinable!(book_authors -> books (book_id));
+diesel::joinable!(book_authors -> authors (author_id));
+diesel::joinable!(books -> publishers (publisher_id));
+
+diesel::allow_tables_to_appear_in_same_query!(
+    books,
+    authors,
+    publishers,
+    book_authors,
+    bookmarks,
+    annotations,
+    reading_progress,
+);

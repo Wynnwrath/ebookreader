@@ -31,7 +31,8 @@ diesel = { version = "2.3.3", features = ["chrono", "sqlite"] }
 dotenvy = "0.15.7"
 walkdir = "2.5.0"
 async-trait = "0.1.89"
-argon2 = { version = "0.5.3", features = ["rand", "std"] }
+thiserror = "2"
+
 scraper = "0.25.0"
 base64 = "0.22.1"
 regex = "1.12.2"

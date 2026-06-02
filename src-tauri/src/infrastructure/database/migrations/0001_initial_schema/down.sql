@@ -1,0 +1,10 @@
+DROP INDEX IF EXISTS idx_reading_progress_book;
+DROP INDEX IF EXISTS idx_annotations_book;
+DROP INDEX IF EXISTS idx_bookmarks_book;
+DROP TABLE IF EXISTS reading_progress;
+DROP TABLE IF EXISTS annotations;
+DROP TABLE IF EXISTS bookmarks;
+DROP TABLE IF EXISTS book_authors;
+DROP TABLE IF EXISTS publishers;
+DROP TABLE IF EXISTS authors;
+DROP TABLE IF EXISTS books;
