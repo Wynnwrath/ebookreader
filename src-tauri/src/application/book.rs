@@ -55,8 +55,7 @@ pub async fn import_book(
         .await
         .map_err(|e| DomainError::Parse(e.to_string()))?;
 
-    let book_repo_trait: &dyn BookRepository = book_repo;
-    if let Some(_existing) = book_repo_trait.find_by_checksum(&metadata.checksum).await? {
+    if let Some(_existing) = book_repo.find_by_checksum(&metadata.checksum).await? {
         return Err(DomainError::DuplicateBook(
             file_path.to_string_lossy().to_string(),
         ));
