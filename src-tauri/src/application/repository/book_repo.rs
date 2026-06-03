@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use diesel::prelude::*;
 use diesel::sql_query;
 use diesel::sql_types::Integer;
-use diesel_async::{AsyncConnection, RunQueryDsl, scoped_futures::ScopedFutureExt};
+use diesel_async::{AsyncConnection, RunQueryDsl};
 
 use crate::domain::error::DomainError;
 use crate::domain::models::book::Book;
@@ -50,37 +50,33 @@ impl BookRepoImpl {
             cover_image_path: book.cover_image_path.as_deref(),
             checksum: book.checksum.as_deref(),
         };
+        
+        let book_id = conn.transaction(async |connection| {
+            diesel::insert_into(books::table)
+                .values(&new_row)
+                .execute(connection)
+                .await?;
 
-        let book_id = conn
-            .transaction(|connection| {
-                async move {
-                    diesel::insert_into(books::table)
-                        .values(&new_row)
-                        .execute(connection)
-                        .await?;
+            // Get the last inserted row ID reliably
+            let result = sql_query("SELECT last_insert_rowid() as book_id")
+                .get_result::<LastInsertRow>(connection)
+                .await?;
+            let book_id = result.book_id;
 
-                    // Get the last inserted row ID reliably
-                    let result = sql_query("SELECT last_insert_rowid() as book_id")
-                        .get_result::<LastInsertRow>(connection)
-                        .await?;
-                    let book_id = result.book_id;
+            // Link all authors in the same transaction
+            for (author_id, _author_name) in author_ids {
+                let link = BookAuthorRow {
+                    book_id,
+                    author_id: *author_id,
+                };
+                diesel::insert_into(book_authors::table)
+                    .values(&link)
+                    .execute(connection)
+                    .await?;
+            }
 
-                    // Link all authors in the same transaction
-                    for (author_id, _author_name) in author_ids {
-                        let link = BookAuthorRow {
-                            book_id,
-                            author_id: *author_id,
-                        };
-                        diesel::insert_into(book_authors::table)
-                            .values(&link)
-                            .execute(connection)
-                            .await?;
-                    }
-
-                    Ok::<i32, diesel::result::Error>(book_id)
-                }
-                .scope_boxed()
-            })
+            Ok::<i32, diesel::result::Error>(book_id)
+        })
             .await?;
 
         // Update publisher_id if set (outside transaction since it's a separate column update)
@@ -145,19 +141,16 @@ impl BookRepository for BookRepoImpl {
         };
 
         let id = conn
-            .transaction(|connection| {
-                async move {
-                    diesel::insert_into(books::table)
-                        .values(&new_row)
-                        .execute(connection)
-                        .await?;
+            .transaction(async |connection| {
+                diesel::insert_into(books::table)
+                    .values(&new_row)
+                    .execute(connection)
+                    .await?;
 
-                    let result = sql_query("SELECT last_insert_rowid() as book_id")
-                        .get_result::<LastInsertRow>(connection)
-                        .await?;
-                    Ok::<i32, diesel::result::Error>(result.book_id)
-                }
-                .scope_boxed()
+                let result = sql_query("SELECT last_insert_rowid() as book_id")
+                    .get_result::<LastInsertRow>(connection)
+                    .await?;
+                Ok::<i32, diesel::result::Error>(result.book_id)
             })
             .await?;
 
@@ -179,15 +172,12 @@ impl BookRepository for BookRepoImpl {
             checksum: book.checksum.as_deref(),
         };
 
-        conn.transaction(|connection| {
-            async move {
-                diesel::update(books::dsl::books.filter(books::book_id.eq(find_id)))
-                    .set(&update_row)
-                    .execute(connection)
-                    .await?;
-                Ok::<(), diesel::result::Error>(())
-            }
-            .scope_boxed()
+        conn.transaction(async |connection| {
+            diesel::update(books::dsl::books.filter(books::book_id.eq(find_id)))
+                .set(&update_row)
+                .execute(connection)
+                .await?;
+            Ok::<(), diesel::result::Error>(())
         })
         .await?;
 
@@ -198,14 +188,11 @@ impl BookRepository for BookRepoImpl {
         let _db_lock = lock_db();
         let mut conn = connect_from_pool().await?;
 
-        conn.transaction(|connection| {
-            async move {
-                diesel::delete(books::dsl::books.filter(books::book_id.eq(find_id)))
-                    .execute(connection)
-                    .await?;
-                Ok::<(), diesel::result::Error>(())
-            }
-            .scope_boxed()
+        conn.transaction(async |connection| {
+            diesel::delete(books::dsl::books.filter(books::book_id.eq(find_id)))
+                .execute(connection)
+                .await?;
+            Ok::<(), diesel::result::Error>(())
         })
         .await?;
 

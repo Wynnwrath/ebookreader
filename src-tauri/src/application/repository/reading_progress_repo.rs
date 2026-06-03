@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use chrono::Utc;
 use diesel::prelude::*;
-use diesel_async::{AsyncConnection, RunQueryDsl, scoped_futures::ScopedFutureExt};
+use diesel_async::{AsyncConnection, RunQueryDsl};
 
 use crate::domain::error::DomainError;
 use crate::domain::models::reading_progress::ReadingProgress;
@@ -50,30 +50,27 @@ impl ReadingProgressRepository for ReadingProgressRepoImpl {
         let mut conn = connect_from_pool().await?;
         let now = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
 
-        conn.transaction(|connection| {
-            async move {
-                diesel::insert_into(reading_progress::table)
-                    .values(&NewReadingProgressRow {
-                        book_id: progress.book_id,
-                        current_position: &progress.current_position,
-                        chapter_title: progress.chapter_title.as_deref(),
-                        page_number: progress.page_number,
-                        progress_percentage: progress.progress_percentage,
-                    })
-                    .on_conflict(reading_progress::book_id)
-                    .do_update()
-                    .set((
-                        reading_progress::current_position.eq(&progress.current_position),
-                        reading_progress::chapter_title.eq(&progress.chapter_title),
-                        reading_progress::page_number.eq(progress.page_number),
-                        reading_progress::progress_percentage.eq(progress.progress_percentage),
-                        reading_progress::last_read_at.eq(&now),
-                    ))
-                    .execute(connection)
-                    .await?;
-                Ok::<(), diesel::result::Error>(())
-            }
-            .scope_boxed()
+        conn.transaction(async |connection| {
+            diesel::insert_into(reading_progress::table)
+                .values(&NewReadingProgressRow {
+                    book_id: progress.book_id,
+                    current_position: &progress.current_position,
+                    chapter_title: progress.chapter_title.as_deref(),
+                    page_number: progress.page_number,
+                    progress_percentage: progress.progress_percentage,
+                })
+                .on_conflict(reading_progress::book_id)
+                .do_update()
+                .set((
+                    reading_progress::current_position.eq(&progress.current_position),
+                    reading_progress::chapter_title.eq(&progress.chapter_title),
+                    reading_progress::page_number.eq(progress.page_number),
+                    reading_progress::progress_percentage.eq(progress.progress_percentage),
+                    reading_progress::last_read_at.eq(&now),
+                ))
+                .execute(connection)
+                .await?;
+            Ok::<(), diesel::result::Error>(())
         })
         .await?;
 

@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use diesel::prelude::*;
-use diesel_async::{AsyncConnection, RunQueryDsl, scoped_futures::ScopedFutureExt};
+use diesel_async::{AsyncConnection, RunQueryDsl};
 
 use crate::domain::error::DomainError;
 use crate::domain::models::publisher::Publisher;
@@ -55,15 +55,12 @@ impl PublisherRepository for PublisherRepoImpl {
         }
 
         // Insert new publisher
-        conn.transaction(|connection| {
-            async move {
-                diesel::insert_into(publishers::table)
-                    .values(publishers::name.eq(publisher_name))
-                    .execute(connection)
-                    .await?;
-                Ok::<(), diesel::result::Error>(())
-            }
-            .scope_boxed()
+        conn.transaction(async |connection| {
+            diesel::insert_into(publishers::table)
+                .values(publishers::name.eq(publisher_name))
+                .execute(connection)
+                .await?;
+            Ok::<(), diesel::result::Error>(())
         })
         .await?;
 

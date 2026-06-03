@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use diesel::prelude::*;
-use diesel_async::{AsyncConnection, RunQueryDsl, scoped_futures::ScopedFutureExt};
+use diesel_async::{AsyncConnection, RunQueryDsl};
 
 use crate::domain::error::DomainError;
 use crate::domain::models::bookmark::Bookmark;
@@ -47,15 +47,12 @@ impl BookmarkRepository for BookmarkRepoImpl {
             position: &bookmark.position,
         };
 
-        conn.transaction(|connection| {
-            async move {
-                diesel::insert_into(bookmarks::table)
-                    .values(&new_row)
-                    .execute(connection)
-                    .await?;
-                Ok::<(), diesel::result::Error>(())
-            }
-            .scope_boxed()
+        conn.transaction(async |connection| {
+            diesel::insert_into(bookmarks::table)
+                .values(&new_row)
+                .execute(connection)
+                .await?;
+            Ok::<(), diesel::result::Error>(())
         })
         .await?;
 
@@ -66,16 +63,13 @@ impl BookmarkRepository for BookmarkRepoImpl {
         let _db_lock = lock_db();
         let mut conn = connect_from_pool().await?;
 
-        conn.transaction(|connection| {
-            async move {
-                diesel::delete(
-                    bookmarks::dsl::bookmarks.filter(bookmarks::bookmark_id.eq(find_id)),
-                )
-                .execute(connection)
-                .await?;
-                Ok::<(), diesel::result::Error>(())
-            }
-            .scope_boxed()
+        conn.transaction(async |connection| {
+            diesel::delete(
+                bookmarks::dsl::bookmarks.filter(bookmarks::bookmark_id.eq(find_id)),
+            )
+            .execute(connection)
+            .await?;
+            Ok::<(), diesel::result::Error>(())
         })
         .await?;
 

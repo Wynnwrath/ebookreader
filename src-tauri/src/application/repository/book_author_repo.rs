@@ -5,7 +5,7 @@ use crate::domain::repository::BookAuthorRepository;
 use crate::infrastructure::database::database::{connect_from_pool, lock_db};
 use crate::infrastructure::database::models::book_author::BookAuthorRow;
 use crate::infrastructure::database::models::schema::book_authors;
-use diesel_async::{AsyncConnection, RunQueryDsl, scoped_futures::ScopedFutureExt};
+use diesel_async::{AsyncConnection, RunQueryDsl};
 
 pub struct BookAuthorRepoImpl;
 
@@ -32,15 +32,12 @@ impl BookAuthorRepository for BookAuthorRepoImpl {
             author_id: find_author_id,
         };
 
-        conn.transaction(|connection| {
-            async move {
-                diesel::insert_into(book_authors::table)
-                    .values(&row)
-                    .execute(connection)
-                    .await?;
-                Ok::<(), diesel::result::Error>(())
-            }
-            .scope_boxed()
+        conn.transaction(async |connection| {
+            diesel::insert_into(book_authors::table)
+                .values(&row)
+                .execute(connection)
+                .await?;
+            Ok::<(), diesel::result::Error>(())
         })
         .await?;
 

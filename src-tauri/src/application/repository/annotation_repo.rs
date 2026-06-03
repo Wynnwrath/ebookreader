@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use diesel::prelude::*;
-use diesel_async::{AsyncConnection, RunQueryDsl, scoped_futures::ScopedFutureExt};
+use diesel_async::{AsyncConnection, RunQueryDsl};
 
 use crate::domain::error::DomainError;
 use crate::domain::models::annotation::Annotation;
@@ -50,17 +50,13 @@ impl AnnotationRepository for AnnotationRepoImpl {
             color: annotation.color.as_deref(),
         };
 
-        conn.transaction(|connection| {
-            async move {
-                diesel::insert_into(annotations::table)
-                    .values(&new_row)
-                    .execute(connection)
-                    .await?;
-                Ok::<(), diesel::result::Error>(())
-            }
-            .scope_boxed()
-        })
-        .await?;
+        conn.transaction(async |connection| {
+            diesel::insert_into(annotations::table)
+                .values(&new_row)
+                .execute(connection)
+                .await?;
+            Ok::<(), diesel::result::Error>(())
+        }).await?;
 
         Ok(())
     }
@@ -69,16 +65,13 @@ impl AnnotationRepository for AnnotationRepoImpl {
         let _db_lock = lock_db();
         let mut conn = connect_from_pool().await?;
 
-        conn.transaction(|connection| {
-            async move {
-                diesel::delete(
-                    annotations::dsl::annotations.filter(annotations::annotation_id.eq(find_id)),
-                )
+        conn.transaction(async |connection| {
+            diesel::delete(
+                annotations::dsl::annotations.filter(annotations::annotation_id.eq(find_id)),
+            )
                 .execute(connection)
                 .await?;
-                Ok::<(), diesel::result::Error>(())
-            }
-            .scope_boxed()
+            Ok::<(), diesel::result::Error>(())
         })
         .await?;
 

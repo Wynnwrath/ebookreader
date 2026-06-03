@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use diesel::prelude::*;
-use diesel_async::{AsyncConnection, RunQueryDsl, scoped_futures::ScopedFutureExt};
+use diesel_async::{AsyncConnection, RunQueryDsl};
 
 use crate::domain::error::DomainError;
 use crate::domain::models::author::Author;
@@ -41,15 +41,13 @@ impl AuthorRepository for AuthorRepoImpl {
             None => {
                 // Insert new author
                 let new_row = NewAuthorRow { name: author_name };
-                conn.transaction(|connection| {
-                    async move {
-                        diesel::insert_into(authors::table)
-                            .values(&new_row)
-                            .execute(connection)
-                            .await?;
-                        Ok::<(), diesel::result::Error>(())
-                    }
-                    .scope_boxed()
+                
+                conn.transaction(async |connection| {
+                    diesel::insert_into(authors::table)
+                        .values(&new_row)
+                        .execute(connection)
+                        .await?;
+                    Ok::<(), diesel::result::Error>(())
                 })
                 .await?;
 
