@@ -7,7 +7,7 @@ pub async fn get_progress(
     book_id: i32,
     state: &AppState,
 ) -> Result<Option<ReadingProgress>, DomainError> {
-    crate::application::manage_reading_progress::get_progress(book_id, &state.reading_progress_repo)
+    crate::application::reading_progress::get_progress(book_id, &state.reading_progress_repo)
         .await
 }
 
@@ -19,7 +19,7 @@ pub async fn update_progress(
     progress_percentage: Option<f32>,
     state: &AppState,
 ) -> Result<(), DomainError> {
-    crate::application::manage_reading_progress::update_progress(
+    crate::application::reading_progress::update_progress(
         NewReadingProgress {
             book_id,
             current_position,

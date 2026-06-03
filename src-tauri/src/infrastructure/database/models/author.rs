@@ -6,7 +6,7 @@ use diesel::prelude::*;
 #[diesel(primary_key(author_id))]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct AuthorRow {
-    pub author_id: i32,
+    pub author_id: Option<i32>,
     pub name: String,
 }
 
@@ -19,7 +19,7 @@ pub struct NewAuthorRow<'a> {
 impl From<AuthorRow> for crate::domain::models::author::Author {
     fn from(row: AuthorRow) -> Self {
         crate::domain::models::author::Author {
-            id: row.author_id,
+            id: row.author_id.unwrap_or(0),
             name: row.name,
         }
     }

@@ -6,14 +6,14 @@ use diesel::prelude::*;
 #[diesel(primary_key(publisher_id))]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct PublisherRow {
-    pub publisher_id: i32,
+    pub publisher_id: Option<i32>,
     pub name: String,
 }
 
 impl From<PublisherRow> for crate::domain::models::publisher::Publisher {
     fn from(row: PublisherRow) -> Self {
         crate::domain::models::publisher::Publisher {
-            id: row.publisher_id,
+            id: row.publisher_id.unwrap_or(0),
             name: row.name,
         }
     }

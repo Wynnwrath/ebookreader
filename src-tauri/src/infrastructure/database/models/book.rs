@@ -6,7 +6,7 @@ use diesel::prelude::*;
 #[diesel(primary_key(book_id))]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct BookRow {
-    pub book_id: i32,
+    pub book_id: Option<i32>,
     pub title: String,
     pub published_date: Option<String>,
     pub publisher_id: Option<i32>,
@@ -47,7 +47,7 @@ pub struct UpdateBookRow<'a> {
 impl From<&crate::domain::models::book::Book> for BookRow {
     fn from(book: &crate::domain::models::book::Book) -> Self {
         BookRow {
-            book_id: book.id,
+            book_id: Some(book.id),
             title: book.title.clone(),
             published_date: book.published_date.clone(),
             publisher_id: book.publisher_id,
@@ -64,7 +64,7 @@ impl From<&crate::domain::models::book::Book> for BookRow {
 impl From<BookRow> for crate::domain::models::book::Book {
     fn from(row: BookRow) -> Self {
         crate::domain::models::book::Book {
-            id: row.book_id,
+            id: row.book_id.unwrap_or(0),
             title: row.title,
             published_date: row.published_date,
             publisher_id: row.publisher_id,

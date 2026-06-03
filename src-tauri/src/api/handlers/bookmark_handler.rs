@@ -10,7 +10,7 @@ pub async fn add_bookmark(
     page_number: Option<i32>,
     state: &AppState,
 ) -> Result<(), DomainError> {
-    crate::application::manage_bookmarks::add_bookmark(
+    crate::application::bookmark::add_bookmark(
         NewBookmark {
             book_id,
             chapter_title,
@@ -23,9 +23,9 @@ pub async fn add_bookmark(
 }
 
 pub async fn get_bookmarks(book_id: i32, state: &AppState) -> Result<Vec<Bookmark>, DomainError> {
-    crate::application::manage_bookmarks::get_bookmarks(book_id, &state.bookmark_repo).await
+    crate::application::bookmark::get_bookmarks(book_id, &state.bookmark_repo).await
 }
 
 pub async fn delete_bookmark(id: i32, state: &AppState) -> Result<(), DomainError> {
-    crate::application::manage_bookmarks::delete_bookmark(id, &state.bookmark_repo).await
+    crate::application::bookmark::delete_bookmark(id, &state.bookmark_repo).await
 }

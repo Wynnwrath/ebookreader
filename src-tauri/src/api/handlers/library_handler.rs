@@ -7,7 +7,7 @@ pub async fn scan_directory(
     directory_path: String,
     state: &AppState,
 ) -> Result<Vec<String>, DomainError> {
-    crate::application::scan_directory::scan_directory(
+    crate::application::book::scan_directory(
         Path::new(&directory_path),
         &state.book_repo,
         &state.author_repo,

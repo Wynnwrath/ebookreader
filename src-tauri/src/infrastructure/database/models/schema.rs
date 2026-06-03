@@ -1,28 +1,23 @@
+// @generated automatically by Diesel CLI.
+
 diesel::table! {
-    books (book_id) {
+    annotations (annotation_id) {
+        annotation_id -> Nullable<Integer>,
         book_id -> Integer,
-        title -> Text,
-        published_date -> Nullable<Text>,
-        publisher_id -> Nullable<Integer>,
-        isbn -> Nullable<Text>,
-        file_type -> Text,
-        file_path -> Text,
-        cover_image_path -> Nullable<Text>,
-        checksum -> Nullable<Text>,
-        added_at -> Nullable<Text>,
+        chapter_title -> Nullable<Text>,
+        start_position -> Text,
+        end_position -> Text,
+        highlighted_text -> Nullable<Text>,
+        note -> Nullable<Text>,
+        color -> Nullable<Text>,
+        created_at -> Nullable<Text>,
+        updated_at -> Nullable<Text>,
     }
 }
 
 diesel::table! {
     authors (author_id) {
-        author_id -> Integer,
-        name -> Text,
-    }
-}
-
-diesel::table! {
-    publishers (publisher_id) {
-        publisher_id -> Integer,
+        author_id -> Nullable<Integer>,
         name -> Text,
     }
 }
@@ -46,17 +41,24 @@ diesel::table! {
 }
 
 diesel::table! {
-    annotations (annotation_id) {
-        annotation_id -> Nullable<Integer>,
-        book_id -> Integer,
-        chapter_title -> Nullable<Text>,
-        start_position -> Text,
-        end_position -> Text,
-        highlighted_text -> Nullable<Text>,
-        note -> Nullable<Text>,
-        color -> Nullable<Text>,
-        created_at -> Nullable<Text>,
-        updated_at -> Nullable<Text>,
+    books (book_id) {
+        book_id -> Nullable<Integer>,
+        title -> Text,
+        published_date -> Nullable<Text>,
+        publisher_id -> Nullable<Integer>,
+        isbn -> Nullable<Text>,
+        file_type -> Text,
+        file_path -> Text,
+        cover_image_path -> Nullable<Text>,
+        checksum -> Nullable<Text>,
+        added_at -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    publishers (publisher_id) {
+        publisher_id -> Nullable<Integer>,
+        name -> Text,
     }
 }
 
@@ -72,16 +74,19 @@ diesel::table! {
     }
 }
 
-diesel::joinable!(book_authors -> books (book_id));
+diesel::joinable!(annotations -> books (book_id));
 diesel::joinable!(book_authors -> authors (author_id));
+diesel::joinable!(book_authors -> books (book_id));
+diesel::joinable!(bookmarks -> books (book_id));
 diesel::joinable!(books -> publishers (publisher_id));
+diesel::joinable!(reading_progress -> books (book_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
-    books,
+    annotations,
     authors,
-    publishers,
     book_authors,
     bookmarks,
-    annotations,
+    books,
+    publishers,
     reading_progress,
 );

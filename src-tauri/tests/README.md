@@ -76,7 +76,6 @@ use stellaron_lib::data::repos::traits::repository::Repository;
 - ❌ Author repository
 - ❌ Book repository
 - ❌ Publisher repository
-- ❌ REST API controllers
 - ❌ Service layer
 - ❌ EPUB handler
 - ❌ Authentication

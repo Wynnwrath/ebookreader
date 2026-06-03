@@ -14,7 +14,7 @@ pub async fn add_annotation(
     color: Option<String>,
     state: &AppState,
 ) -> Result<(), DomainError> {
-    crate::application::manage_annotations::add_annotation(
+    crate::application::annotation::add_annotation(
         NewAnnotation {
             book_id,
             chapter_title,
@@ -33,9 +33,9 @@ pub async fn get_annotations(
     book_id: i32,
     state: &AppState,
 ) -> Result<Vec<Annotation>, DomainError> {
-    crate::application::manage_annotations::get_annotations(book_id, &state.annotation_repo).await
+    crate::application::annotation::get_annotations(book_id, &state.annotation_repo).await
 }
 
 pub async fn delete_annotation(id: i32, state: &AppState) -> Result<(), DomainError> {
-    crate::application::manage_annotations::delete_annotation(id, &state.annotation_repo).await
+    crate::application::annotation::delete_annotation(id, &state.annotation_repo).await
 }

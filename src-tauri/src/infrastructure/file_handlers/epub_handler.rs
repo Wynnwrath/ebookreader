@@ -1,5 +1,5 @@
 use base64::{Engine as _, engine::general_purpose};
-use rbook::{Ebook, Epub, prelude::*};
+use rbook::Epub;
 use regex::Regex;
 use scraper::{Html, Selector};
 use serde::Serialize;
@@ -73,7 +73,7 @@ pub async fn parse_epub_meta(
             authors.push("Unknown Author".to_string());
         }
 
-        let published_date = metadata.publication_date().map(|d| d.to_string());
+        let published_date = metadata.published().map(|d| d.to_string());
 
         let isbn = metadata
             .identifiers()
@@ -81,7 +81,7 @@ pub async fn parse_epub_meta(
             .map(|i| i.value().to_string());
 
         let cover_data = if let Some(cover_image) = book.manifest().cover_image() {
-            let mime_type = cover_image.resource_kind().as_str().to_string();
+            let mime_type = cover_image.kind().as_str().to_string();
             cover_image
                 .read_bytes()
                 .ok()
@@ -111,16 +111,16 @@ pub async fn get_epub_content(
     tokio::task::spawn_blocking(move || {
         let epub = Epub::open(&path_str).map_err(|e| e.to_string())?;
         let mut combined_html = String::new();
-
+        // TODO: Avoid using regex
         let img_re = Regex::new(r#"(?i)(<img[^>]*?src=["'])([^"']+)(["'][^>]*?>)"#).unwrap();
         let image_re =
             Regex::new(r#"(?i)(<image[^>]*?(?:xlink:)?href=["'])([^"']+)(["'][^>]*?>)"#).unwrap();
 
-        let spine = epub.spine().entries().collect::<Vec<_>>();
+        let spine = epub.spine().iter().collect::<Vec<_>>();
 
         for item_ref in spine {
             if let Some(resource) = epub.manifest().by_id(item_ref.idref())
-                && resource.resource_kind().as_str() == "application/xhtml+xml"
+                && resource.kind().as_str() == "application/xhtml+xml"
                 && let Ok(content) = epub.read_resource_str(resource.resource())
             {
                 let content_img_processed =
@@ -142,7 +142,7 @@ pub async fn get_epub_content(
                         {
                             let encoded =
                                 general_purpose::STANDARD.encode(&image_bytes);
-                            let kind = image_resource.resource_kind();
+                            let kind = image_resource.kind();
                             let mime_type = kind.as_str();
                             let data_url =
                                 format!("data:{};base64,{}", mime_type, encoded);
@@ -171,7 +171,7 @@ pub async fn get_epub_content(
                         {
                             let encoded =
                                 general_purpose::STANDARD.encode(&image_bytes);
-                            let kind = image_resource.resource_kind();
+                            let kind = image_resource.kind();
                             let mime_type = kind.as_str();
                             let data_url =
                                 format!("data:{};base64,{}", mime_type, encoded);

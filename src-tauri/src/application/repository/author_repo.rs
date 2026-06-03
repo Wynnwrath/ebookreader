@@ -69,7 +69,7 @@ impl AuthorRepository for AuthorRepoImpl {
         let mut conn = connect_from_pool().await?;
 
         let rows = book_authors::table
-            .inner_join(authors::table.on(authors::author_id.eq(book_authors::author_id)))
+            .inner_join(authors::table)
             .filter(book_authors::book_id.eq(find_book_id))
             .select((authors::author_id, authors::name))
             .load::<AuthorRow>(&mut conn)

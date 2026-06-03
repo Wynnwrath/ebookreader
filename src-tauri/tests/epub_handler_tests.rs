@@ -1,6 +1,4 @@
-use std::path::Path;
 use stellaron_lib::infrastructure::file_handlers::epub_handler::*;
-use tokio::fs;
 
 #[tokio::test]
 async fn test_get_epub_content() {
