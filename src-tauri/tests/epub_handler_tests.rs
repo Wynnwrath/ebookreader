@@ -1,4 +1,5 @@
 use stellaron_lib::infrastructure::file_handlers::epub_handler::*;
+use stellaron_lib::utils::file::compute_checksum;
 
 #[tokio::test]
 async fn test_get_epub_content() {
