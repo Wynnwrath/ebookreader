@@ -2,6 +2,17 @@ use crate::api::handlers;
 use crate::application::state::AppState;
 use tauri::State;
 
+/// Creates a new annotation (highlight with optional note) for a book.
+///
+/// # Arguments
+///
+/// * `book_id` - The book's database ID.
+/// * `start_position` - Start of the highlighted text range.
+/// * `end_position` - End of the highlighted text range.
+/// * `chapter_title` - Optional chapter title.
+/// * `highlighted_text` - Optional captured highlight text.
+/// * `note` - Optional user-written note.
+/// * `color` - Optional highlight color identifier.
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
 pub async fn add_annotation(
@@ -28,6 +39,11 @@ pub async fn add_annotation(
     .map_err(|e| e.to_string())
 }
 
+/// Returns all annotations for the given book.
+///
+/// # Arguments
+///
+/// * `book_id` - The book's database ID.
 #[tauri::command]
 pub async fn get_annotations(
     book_id: i32,
@@ -38,6 +54,11 @@ pub async fn get_annotations(
         .map_err(|e| e.to_string())
 }
 
+/// Deletes an annotation by ID.
+///
+/// # Arguments
+///
+/// * `annotation_id` - The annotation's database ID.
 #[tauri::command]
 pub async fn delete_annotation(
     annotation_id: i32,

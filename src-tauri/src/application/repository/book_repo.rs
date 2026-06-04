@@ -12,12 +12,14 @@ use crate::infrastructure::database::models::book::{BookRow, NewBookRow, UpdateB
 use crate::infrastructure::database::models::book_author::BookAuthorRow;
 use crate::infrastructure::database::models::schema::{book_authors, books};
 
+/// Helper for retrieving the last inserted row ID via `last_insert_rowid()`.
 #[derive(QueryableByName)]
 struct LastInsertRow {
     #[diesel(sql_type = Integer)]
     book_id: i32,
 }
 
+/// Diesel-backed implementation of [`BookRepository`].
 pub struct BookRepoImpl;
 
 impl Default for BookRepoImpl {
@@ -31,6 +33,11 @@ impl BookRepoImpl {
         Self
     }
 
+    /// Imports a new book with author and publisher links in a single transaction.
+    ///
+    /// Inserts the book row, retrieves its generated ID, and links all authors
+    /// via the `book_authors` join table. The publisher link is set in a
+    /// separate update after the transaction (since it requires the book ID).
     pub async fn import_with_links(
         &self,
         book: NewBook,
@@ -103,6 +110,7 @@ impl BookRepoImpl {
 
 #[async_trait]
 impl BookRepository for BookRepoImpl {
+    /// Returns all books from the `books` table.
     async fn find_all(&self) -> Result<Vec<Book>, DomainError> {
         let mut conn = connect_from_pool().await?;
 
@@ -111,6 +119,7 @@ impl BookRepository for BookRepoImpl {
         Ok(rows.into_iter().map(Book::from).collect())
     }
 
+    /// Returns a book by ID, or `None` if not found.
     async fn find_by_id(&self, find_id: i32) -> Result<Option<Book>, DomainError> {
         let mut conn = connect_from_pool().await?;
 
@@ -125,6 +134,7 @@ impl BookRepository for BookRepoImpl {
         }
     }
 
+    /// Inserts a new book and returns its generated ID.
     async fn insert(&self, book: NewBook) -> Result<i32, DomainError> {
         let _db_lock = lock_db();
         let mut conn = connect_from_pool().await?;
@@ -157,6 +167,7 @@ impl BookRepository for BookRepoImpl {
         Ok(id)
     }
 
+    /// Updates a book by ID. Only `Some` fields in the update are applied.
     async fn update(&self, find_id: i32, book: UpdateBook) -> Result<(), DomainError> {
         let _db_lock = lock_db();
         let mut conn = connect_from_pool().await?;
@@ -184,6 +195,7 @@ impl BookRepository for BookRepoImpl {
         Ok(())
     }
 
+    /// Deletes a book by ID. Cascade deletes handle associated records.
     async fn delete(&self, find_id: i32) -> Result<(), DomainError> {
         let _db_lock = lock_db();
         let mut conn = connect_from_pool().await?;
@@ -199,6 +211,7 @@ impl BookRepository for BookRepoImpl {
         Ok(())
     }
 
+    /// Returns the book matching the given checksum, or `None`.
     async fn find_by_checksum(&self, checksum_str: &str) -> Result<Option<Book>, DomainError> {
         let mut conn = connect_from_pool().await?;
 
@@ -213,6 +226,7 @@ impl BookRepository for BookRepoImpl {
         }
     }
 
+    /// Searches books by title using a LIKE query (case-insensitive).
     async fn search_by_title(&self, title_query: &str) -> Result<Vec<Book>, DomainError> {
         let mut conn = connect_from_pool().await?;
 

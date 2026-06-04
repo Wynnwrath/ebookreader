@@ -9,6 +9,7 @@ use crate::infrastructure::database::database::{connect_from_pool, lock_db};
 use crate::infrastructure::database::models::author::{AuthorRow, NewAuthorRow};
 use crate::infrastructure::database::models::schema::{authors, book_authors};
 
+/// Diesel-backed implementation of [`AuthorRepository`].
 pub struct AuthorRepoImpl;
 
 impl AuthorRepoImpl {
@@ -25,6 +26,7 @@ impl Default for AuthorRepoImpl {
 
 #[async_trait]
 impl AuthorRepository for AuthorRepoImpl {
+    /// Finds an existing author by name, or inserts a new one and returns it.
     async fn find_or_create(&self, author_name: &str) -> Result<Author, DomainError> {
         let _db_lock = lock_db();
         let mut conn = connect_from_pool().await?;
@@ -63,6 +65,7 @@ impl AuthorRepository for AuthorRepoImpl {
         }
     }
 
+    /// Returns all authors linked to the given book via `book_authors`.
     async fn get_authors_by_book(&self, find_book_id: i32) -> Result<Vec<Author>, DomainError> {
         let mut conn = connect_from_pool().await?;
 

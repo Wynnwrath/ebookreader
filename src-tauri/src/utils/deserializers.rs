@@ -1,6 +1,16 @@
 use chrono::NaiveDateTime;
 use serde::Deserialize;
 
+/// Deserializes a `"YYYY-MM-DD HH:MM:SS"` string into a `NaiveDateTime`.
+///
+/// # Arguments
+///
+/// * `deserializer` - The Serde deserializer.
+///
+/// # Errors
+///
+/// Returns a Serde error when the input string cannot be parsed as a
+/// `NaiveDateTime` in the expected format.
 pub fn naive_datetime_from_str<'de, D>(deserializer: D) -> Result<NaiveDateTime, D::Error>
 where
     D: serde::Deserializer<'de>,

@@ -1,6 +1,7 @@
 use crate::infrastructure::database::models::schema::reading_progress;
 use diesel::prelude::*;
 
+/// Diesel queryable row for the `reading_progress` table.
 #[derive(Queryable, Identifiable, Selectable, PartialEq, Debug)]
 #[diesel(table_name = reading_progress)]
 #[diesel(primary_key(progress_id))]
@@ -15,6 +16,7 @@ pub struct ReadingProgressRow {
     pub last_read_at: Option<String>,
 }
 
+/// Insertable row for creating or upserting reading progress.
 #[derive(Insertable, PartialEq, Debug)]
 #[diesel(table_name = reading_progress)]
 pub struct NewReadingProgressRow<'a> {
@@ -25,6 +27,7 @@ pub struct NewReadingProgressRow<'a> {
     pub progress_percentage: Option<f32>,
 }
 
+/// Converts a `ReadingProgressRow` into a domain [`ReadingProgress`](crate::domain::models::reading_progress::ReadingProgress).
 impl From<ReadingProgressRow> for crate::domain::models::reading_progress::ReadingProgress {
     fn from(row: ReadingProgressRow) -> Self {
         crate::domain::models::reading_progress::ReadingProgress {

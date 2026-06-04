@@ -3,6 +3,7 @@ use crate::domain::error::DomainError;
 use crate::domain::models::reading_progress::ReadingProgress;
 use crate::domain::repository::*;
 
+/// Returns the current reading progress for a book.
 pub async fn get_progress(
     book_id: i32,
     state: &AppState,
@@ -11,6 +12,7 @@ pub async fn get_progress(
         .await
 }
 
+/// Creates or updates reading progress for a book (upsert).
 pub async fn update_progress(
     book_id: i32,
     current_position: String,

@@ -1,6 +1,7 @@
 use crate::infrastructure::database::models::schema::books;
 use diesel::prelude::*;
 
+/// Diesel queryable row for the `books` table.
 #[derive(Queryable, Identifiable, Selectable, PartialEq, Debug)]
 #[diesel(table_name = books)]
 #[diesel(primary_key(book_id))]
@@ -18,6 +19,7 @@ pub struct BookRow {
     pub added_at: Option<String>,
 }
 
+/// Insertable row for creating a new book record.
 #[derive(Insertable, PartialEq, Debug)]
 #[diesel(table_name = books)]
 pub struct NewBookRow<'a> {
@@ -31,6 +33,7 @@ pub struct NewBookRow<'a> {
     pub checksum: Option<&'a str>,
 }
 
+/// Partial update row for modifying an existing book.
 #[derive(AsChangeset, PartialEq, Debug)]
 #[diesel(table_name = books)]
 pub struct UpdateBookRow<'a> {
@@ -44,6 +47,7 @@ pub struct UpdateBookRow<'a> {
     pub checksum: Option<&'a str>,
 }
 
+/// Converts a domain [`Book`](crate::domain::models::book::Book) into a `BookRow`.
 impl From<&crate::domain::models::book::Book> for BookRow {
     fn from(book: &crate::domain::models::book::Book) -> Self {
         BookRow {
@@ -61,6 +65,7 @@ impl From<&crate::domain::models::book::Book> for BookRow {
     }
 }
 
+/// Converts a `BookRow` into a domain [`Book`](crate::domain::models::book::Book).
 impl From<BookRow> for crate::domain::models::book::Book {
     fn from(row: BookRow) -> Self {
         crate::domain::models::book::Book {

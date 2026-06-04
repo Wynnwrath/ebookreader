@@ -9,6 +9,7 @@ use crate::infrastructure::database::database::{connect_from_pool, lock_db};
 use crate::infrastructure::database::models::annotation::{AnnotationRow, NewAnnotationRow};
 use crate::infrastructure::database::models::schema::annotations;
 
+/// Diesel-backed implementation of [`AnnotationRepository`].
 pub struct AnnotationRepoImpl;
 
 impl AnnotationRepoImpl {
@@ -25,6 +26,7 @@ impl Default for AnnotationRepoImpl {
 
 #[async_trait]
 impl AnnotationRepository for AnnotationRepoImpl {
+    /// Returns all annotations for the given book.
     async fn find_by_book(&self, find_book_id: i32) -> Result<Vec<Annotation>, DomainError> {
         let mut conn = connect_from_pool().await?;
 
@@ -36,6 +38,7 @@ impl AnnotationRepository for AnnotationRepoImpl {
         Ok(rows.into_iter().map(Annotation::from).collect())
     }
 
+    /// Inserts a new annotation.
     async fn insert(&self, annotation: NewAnnotation) -> Result<(), DomainError> {
         let _db_lock = lock_db();
         let mut conn = connect_from_pool().await?;
@@ -61,6 +64,7 @@ impl AnnotationRepository for AnnotationRepoImpl {
         Ok(())
     }
 
+    /// Deletes an annotation by ID.
     async fn delete(&self, find_id: i32) -> Result<(), DomainError> {
         let _db_lock = lock_db();
         let mut conn = connect_from_pool().await?;

@@ -2,6 +2,24 @@ use crate::domain::repository::BookRepository;
 use crate::infrastructure::file_handlers::BookMetadata;
 use std::sync::Arc;
 
+/// Re-parses the original ebook file for a book and returns fresh metadata.
+///
+/// Useful for verifying or refreshing metadata without re-importing.
+///
+/// # Arguments
+///
+/// * `book_id` - The book's database ID.
+/// * `book_repo` - Repository for looking up the book record.
+///
+/// # Returns
+///
+/// `Ok(None)` if no book has the given ID. Otherwise the freshly-parsed
+/// [`BookMetadata`].
+///
+/// # Errors
+///
+/// Returns [`DomainError::File`] when the book has no stored file path.
+/// Returns [`DomainError::Parse`] when the file cannot be read.
 pub async fn fetch_metadata(
     book_id: i32,
     book_repo: &Arc<dyn BookRepository>,
@@ -36,6 +54,23 @@ pub async fn fetch_metadata(
     Ok(Some(metadata))
 }
 
+/// Re-parses every book in the library and returns a list of their metadata.
+///
+/// Books whose files cannot be read are silently skipped.
+///
+/// # Arguments
+///
+/// * `book_repo` - Repository for listing all book records.
+///
+/// # Returns
+///
+/// A vector of [`BookMetadata`] for every book whose file could be re-parsed
+/// successfully.
+///
+/// # Errors
+///
+/// Delegates to the repository; returns [`DomainError::Database`] on query
+/// failures.
 pub async fn list_metadata(
     book_repo: &Arc<dyn crate::domain::repository::BookRepository>,
 ) -> Result<Vec<BookMetadata>, crate::domain::error::DomainError> {
@@ -63,6 +98,22 @@ pub async fn list_metadata(
     Ok(all_metadata)
 }
 
+/// Updates metadata fields for a book found by title search.
+///
+/// Only the provided (non-`None`) fields are updated. The book is located
+/// by searching for the first title match.
+///
+/// # Arguments
+///
+/// * `book_name` - Substring to search book titles against.
+/// * `title` - New title, or `None` to keep existing.
+/// * `published_date` - New publication date, or `None` to keep existing.
+/// * `isbn` - New ISBN, or `None` to keep existing.
+/// * `book_repo` - Repository for searching and updating the book.
+///
+/// # Errors
+///
+/// Returns [`DomainError::NotFound`] when no book matches the title search.
 pub async fn update_metadata(
     book_name: &str,
     title: Option<&str>,

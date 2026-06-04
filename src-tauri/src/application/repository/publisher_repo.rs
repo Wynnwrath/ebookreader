@@ -9,6 +9,7 @@ use crate::infrastructure::database::database::{connect_from_pool, lock_db};
 use crate::infrastructure::database::models::publisher::PublisherRow;
 use crate::infrastructure::database::models::schema::publishers;
 
+/// Diesel-backed implementation of [`PublisherRepository`].
 pub struct PublisherRepoImpl;
 
 impl PublisherRepoImpl {
@@ -25,6 +26,7 @@ impl Default for PublisherRepoImpl {
 
 #[async_trait]
 impl PublisherRepository for PublisherRepoImpl {
+    /// Returns the publisher by ID, or `None`.
     async fn find_by_id(&self, find_id: i32) -> Result<Option<Publisher>, DomainError> {
         let mut conn = connect_from_pool().await?;
 
@@ -39,6 +41,7 @@ impl PublisherRepository for PublisherRepoImpl {
         }
     }
 
+    /// Finds an existing publisher by name, or inserts a new one and returns it.
     async fn find_or_create(&self, publisher_name: &str) -> Result<Publisher, DomainError> {
         let _db_lock = lock_db();
         let mut conn = connect_from_pool().await?;

@@ -1,6 +1,7 @@
 use crate::infrastructure::database::models::schema::annotations;
 use diesel::prelude::*;
 
+/// Diesel queryable row for the `annotations` table.
 #[derive(Queryable, Identifiable, Selectable, PartialEq, Debug)]
 #[diesel(table_name = annotations)]
 #[diesel(primary_key(annotation_id))]
@@ -18,6 +19,7 @@ pub struct AnnotationRow {
     pub updated_at: Option<String>,
 }
 
+/// Insertable row for creating a new annotation record.
 #[derive(Insertable, PartialEq, Debug)]
 #[diesel(table_name = annotations)]
 pub struct NewAnnotationRow<'a> {
@@ -30,6 +32,7 @@ pub struct NewAnnotationRow<'a> {
     pub color: Option<&'a str>,
 }
 
+/// Converts an `AnnotationRow` into a domain [`Annotation`](crate::domain::models::annotation::Annotation).
 impl From<AnnotationRow> for crate::domain::models::annotation::Annotation {
     fn from(row: AnnotationRow) -> Self {
         crate::domain::models::annotation::Annotation {

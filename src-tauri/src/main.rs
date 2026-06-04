@@ -1,10 +1,17 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+//! Stellaron — desktop ebook reader built with Tauri v2.
+//!
+//! Initializes the SQLite database, runs pending migrations, wires up the
+//! application state with all repository implementations, and launches the
+//! Tauri window with registered IPC commands.
+
 use std::sync::Arc;
 
 use diesel::Connection;
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 
+/// Embedded SQL migrations applied on startup.
 pub const MIGRATIONS: EmbeddedMigrations =
     embed_migrations!("./src/infrastructure/database/migrations");
 
@@ -71,6 +78,11 @@ async fn main() {
         .expect("error while running tauri application");
 }
 
+/// Cleanly exits the application.
+///
+/// # Arguments
+///
+/// * `app` - The Tauri application handle used to trigger shutdown.
 #[tauri::command]
 fn exit_app(app: tauri::AppHandle) {
     app.exit(0);

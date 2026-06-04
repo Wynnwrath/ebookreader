@@ -7,6 +7,7 @@ use crate::infrastructure::database::models::book_author::BookAuthorRow;
 use crate::infrastructure::database::models::schema::book_authors;
 use diesel_async::{AsyncConnection, RunQueryDsl};
 
+/// Diesel-backed implementation of [`BookAuthorRepository`].
 pub struct BookAuthorRepoImpl;
 
 impl BookAuthorRepoImpl {
@@ -23,6 +24,7 @@ impl Default for BookAuthorRepoImpl {
 
 #[async_trait]
 impl BookAuthorRepository for BookAuthorRepoImpl {
+    /// Creates a book-author link in the `book_authors` join table.
     async fn link(&self, find_book_id: i32, find_author_id: i32) -> Result<(), DomainError> {
         let _db_lock = lock_db();
         let mut conn = connect_from_pool().await?;

@@ -9,6 +9,7 @@ use crate::infrastructure::database::database::{connect_from_pool, lock_db};
 use crate::infrastructure::database::models::bookmark::{BookmarkRow, NewBookmarkRow};
 use crate::infrastructure::database::models::schema::bookmarks;
 
+/// Diesel-backed implementation of [`BookmarkRepository`].
 pub struct BookmarkRepoImpl;
 
 impl BookmarkRepoImpl {
@@ -25,6 +26,7 @@ impl Default for BookmarkRepoImpl {
 
 #[async_trait]
 impl BookmarkRepository for BookmarkRepoImpl {
+    /// Returns all bookmarks for the given book.
     async fn find_by_book(&self, find_book_id: i32) -> Result<Vec<Bookmark>, DomainError> {
         let mut conn = connect_from_pool().await?;
 
@@ -36,6 +38,7 @@ impl BookmarkRepository for BookmarkRepoImpl {
         Ok(rows.into_iter().map(Bookmark::from).collect())
     }
 
+    /// Inserts a new bookmark.
     async fn insert(&self, bookmark: NewBookmark) -> Result<(), DomainError> {
         let _db_lock = lock_db();
         let mut conn = connect_from_pool().await?;
@@ -59,6 +62,7 @@ impl BookmarkRepository for BookmarkRepoImpl {
         Ok(())
     }
 
+    /// Deletes a bookmark by ID.
     async fn delete(&self, find_id: i32) -> Result<(), DomainError> {
         let _db_lock = lock_db();
         let mut conn = connect_from_pool().await?;

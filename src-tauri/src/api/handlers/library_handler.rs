@@ -3,6 +3,7 @@ use std::path::Path;
 use crate::application::state::AppState;
 use crate::domain::error::DomainError;
 
+/// Recursively scans a directory for ebooks and imports them.
 pub async fn scan_directory(
     directory_path: String,
     state: &AppState,

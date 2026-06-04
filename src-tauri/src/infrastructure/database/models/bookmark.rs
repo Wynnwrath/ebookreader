@@ -1,6 +1,7 @@
 use crate::infrastructure::database::models::schema::bookmarks;
 use diesel::prelude::*;
 
+/// Diesel queryable row for the `bookmarks` table.
 #[derive(Queryable, Identifiable, Selectable, PartialEq, Debug)]
 #[diesel(table_name = bookmarks)]
 #[diesel(primary_key(bookmark_id))]
@@ -14,6 +15,7 @@ pub struct BookmarkRow {
     pub created_at: Option<String>,
 }
 
+/// Insertable row for creating a new bookmark record.
 #[derive(Insertable, PartialEq, Debug)]
 #[diesel(table_name = bookmarks)]
 pub struct NewBookmarkRow<'a> {
@@ -23,6 +25,7 @@ pub struct NewBookmarkRow<'a> {
     pub position: &'a str,
 }
 
+/// Converts a `BookmarkRow` into a domain [`Bookmark`](crate::domain::models::bookmark::Bookmark).
 impl From<BookmarkRow> for crate::domain::models::bookmark::Bookmark {
     fn from(row: BookmarkRow) -> Self {
         crate::domain::models::bookmark::Bookmark {

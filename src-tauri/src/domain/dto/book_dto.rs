@@ -1,5 +1,9 @@
 use serde::Serialize;
 
+/// Data transfer object for books sent to the frontend.
+///
+/// Combines a [`Book`](crate::domain::models::book::Book) with its first author
+/// and publisher names for convenient rendering in the UI.
 #[derive(Debug, Clone, Serialize)]
 pub struct BookDto {
     pub id: i32,
@@ -16,6 +20,8 @@ pub struct BookDto {
 }
 
 impl BookDto {
+    /// Constructs a `BookDto` from a domain [`Book`](crate::domain::models::book::Book) and
+    /// resolved author/publisher names.
     pub fn new(
         book: &crate::domain::models::book::Book,
         author: Option<String>,

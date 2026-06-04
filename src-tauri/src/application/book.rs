@@ -10,13 +10,35 @@ use crate::infrastructure::file_handlers::epub_handler;
 use crate::infrastructure::file_handlers::pdf_handler;
 use crate::infrastructure::file_handlers::pdf_handler::PdfPage;
 
+/// Serialized content returned by [`read_book`], tagged by file format.
 #[derive(Serialize, Clone)]
 #[serde(tag = "type", content = "data")]
 pub enum BookContent {
+    /// Raw HTML string extracted from an EPUB's spine items.
     Epub(String),
+    /// Rendered PDF page as a base64-encoded image with text spans.
     Pdf(PdfPage),
 }
 
+/// Retrieves a single book by ID, resolved to a [`BookDto`] with author and
+/// publisher names.
+///
+/// # Arguments
+///
+/// * `find_id` - The book's database ID.
+/// * `book_repo` - Repository for looking up books.
+/// * `author_repo` - Repository for resolving author names.
+/// * `publisher_repo` - Repository for resolving publisher names.
+///
+/// # Returns
+///
+/// `Ok(None)` if no book with the given ID exists. Otherwise the book as a
+/// `BookDto` with its first author and publisher names included.
+///
+/// # Errors
+///
+/// Delegates to the underlying repository methods; any database failure is
+/// returned as [`DomainError::Database`].
 pub async fn get_book(
     find_id: i32,
     book_repo: &Arc<dyn BookRepository>,
@@ -39,6 +61,31 @@ pub async fn get_book(
     Ok(Some(BookDto::new(&book, author, publisher)))
 }
 
+/// Returns the cover image bytes for the given book.
+///
+/// For PDFs the first page is rendered as a PNG at 150 DPI. For EPUBs the
+/// embedded cover image is extracted. Returns `None` if no cover is available
+/// or extraction fails.
+///
+/// # Arguments
+///
+/// * `book_id` - The book's database ID.
+/// * `book_repo` - Repository for looking up the book record.
+///
+/// # Returns
+///
+/// `Ok(None)` when the file type has no cover support or extraction fails.
+/// `Ok(Some(bytes))` with the raw cover image bytes on success.
+///
+/// # Errors
+///
+/// Returns [`DomainError::BookNotFound`] if no book has the given ID.
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// let bytes = get_cover(42, &book_repo).await?;
+/// ```
 pub async fn get_cover(
     book_id: i32,
     book_repo: &Arc<dyn BookRepository>,
@@ -65,6 +112,30 @@ pub async fn get_cover(
     }
 }
 
+/// Imports a single ebook file into the library.
+///
+/// Parses metadata from the file, checks for duplicates via checksum, creates
+/// author and publisher records as needed, and inserts the book with all
+/// foreign-key links in a single transaction.
+///
+/// # Arguments
+///
+/// * `file_path` - Absolute path to the ebook file (`.epub` or `.pdf`).
+/// * `book_repo` - Repository for inserting the book record.
+/// * `author_repo` - Repository for finding or creating authors.
+/// * `_book_author_repo` - Repository for linking authors to the book.
+/// * `publisher_repo` - Repository for finding or creating the publisher.
+///
+/// # Returns
+///
+/// A fully-resolved [`BookDto`] with author and publisher names populated.
+///
+/// # Errors
+///
+/// Returns [`DomainError::DuplicateBook`] when a book with the same SHA-256
+/// checksum already exists. Returns [`DomainError::Parse`] when the file
+/// cannot be read or parsed. Returns [`DomainError::File`] for unsupported
+/// file extensions.
 pub async fn import_book(
     file_path: &Path,
     book_repo: &Arc<dyn BookRepository>,
@@ -139,6 +210,22 @@ pub async fn import_book(
     ))
 }
 
+/// Returns all books in the library, each resolved to a [`BookDto`].
+///
+/// # Arguments
+///
+/// * `book_repo` - Repository for listing all book records.
+/// * `author_repo` - Repository for resolving author names per book.
+/// * `publisher_repo` - Repository for resolving publisher names per book.
+///
+/// # Returns
+///
+/// A vector of [`BookDto`] for every book in the database.
+///
+/// # Errors
+///
+/// Delegates to repository methods; returns [`DomainError::Database`] on
+/// query failures.
 pub async fn list_books(
     book_repo: &Arc<dyn BookRepository>,
     author_repo: &Arc<dyn AuthorRepository>,
@@ -162,12 +249,49 @@ pub async fn list_books(
     Ok(dtos)
 }
 
+/// Reads and returns the full HTML content of an EPUB file.
+///
+/// Spine items are concatenated, with image `src` attributes replaced by
+/// inline base64 data URIs so the HTML is self-contained.
+///
+/// # Arguments
+///
+/// * `path` - Absolute path to the EPUB file on disk.
+///
+/// # Returns
+///
+/// A single HTML string containing the body content of all spine items with
+/// inline base64 images.
+///
+/// # Errors
+///
+/// Returns [`DomainError::Parse`] when the file cannot be opened, is not a
+/// valid EPUB, or contains malformed spine items.
 pub async fn read_epub(path: &str) -> Result<String, DomainError> {
     epub_handler::get_epub_content(path)
         .await
         .map_err(|e| DomainError::Parse(e.to_string()))
 }
 
+/// Reads content from an ebook file based on its format.
+///
+/// For EPUBs, returns the concatenated HTML. For PDFs, returns the first page
+/// rendered as an image with extracted text spans.
+///
+/// # Arguments
+///
+/// * `path` - Absolute path to the ebook file on disk.
+/// * `file_type` - Either `"epub"` or `"pdf"`.
+///
+/// # Returns
+///
+/// [`BookContent::Epub`] containing the full HTML for EPUBs, or
+/// [`BookContent::Pdf`] containing the rendered first page for PDFs.
+///
+/// # Errors
+///
+/// Returns [`DomainError::Parse`] when the file cannot be read. Returns
+/// [`DomainError::File`] when `file_type` is not `"epub"` or `"pdf"`.
 pub async fn read_book(path: &str, file_type: &str) -> Result<BookContent, DomainError> {
     match file_type {
         "epub" => {
@@ -186,6 +310,20 @@ pub async fn read_book(path: &str, file_type: &str) -> Result<BookContent, Domai
     }
 }
 
+/// Removes a book from the library by ID.
+///
+/// Associated records (bookmarks, annotations, reading progress, book-author
+/// links) are cascade-deleted by SQLite foreign keys.
+///
+/// # Arguments
+///
+/// * `find_id` - The book's database ID.
+/// * `book_repo` - Repository for deleting the book record.
+///
+/// # Errors
+///
+/// Delegates to the repository; returns [`DomainError::Database`] on query
+/// failures. No error is returned if the ID does not exist.
 pub async fn remove_book(
     find_id: i32,
     book_repo: &Arc<dyn BookRepository>,
@@ -193,6 +331,24 @@ pub async fn remove_book(
     book_repo.delete(find_id).await
 }
 
+/// Recursively scans a directory for EPUB and PDF files and imports them.
+///
+/// # Arguments
+///
+/// * `dir_path` - Directory to scan recursively for ebook files.
+/// * `book_repo` - Repository for inserting book records.
+/// * `author_repo` - Repository for finding or creating authors.
+/// * `book_author_repo` - Repository for linking authors to books.
+/// * `publisher_repo` - Repository for finding or creating publishers.
+///
+/// # Returns
+///
+/// A list of error messages for files that failed to import. Successfully
+/// imported books are silently added to the library.
+///
+/// # Errors
+///
+/// Returns [`DomainError::File`] when the directory cannot be scanned.
 pub async fn scan_directory(
     dir_path: &Path,
     book_repo: &Arc<dyn BookRepository>,

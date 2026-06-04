@@ -10,8 +10,21 @@ use crate::infrastructure::database::database::connect_from_pool;
 use crate::infrastructure::file_handlers::BookMetadata;
 use crate::utils::file::compute_checksum;
 
+/// Marker struct for EPUB-specific operations.
 pub struct EpubHandler;
 
+/// Recursively scans a directory for `.epub` files.
+///
+/// Runs directory traversal on a blocking thread to avoid stalling the async
+/// runtime.
+///
+/// # Arguments
+///
+/// * `dir` - Directory to scan recursively.
+///
+/// # Returns
+///
+/// A vector of absolute paths to matching `.epub` files.
 pub async fn scan_epubs<P: AsRef<Path> + Send + 'static>(
     dir: P,
 ) -> Result<Vec<PathBuf>, JoinError> {
@@ -32,6 +45,25 @@ pub async fn scan_epubs<P: AsRef<Path> + Send + 'static>(
     .await
 }
 
+/// Parses metadata from an EPUB file.
+///
+/// Extracts title, authors, publishers, publication date, ISBN, cover image,
+/// and computes a SHA-256 checksum. Defaults to "Unknown Author" / "Unknown
+/// Publisher" / "Unknown Title" when metadata fields are missing.
+///
+/// # Arguments
+///
+/// * `path` - Absolute path to the EPUB file.
+///
+/// # Returns
+///
+/// A populated [`BookMetadata`] struct with all extracted fields and the
+/// file's SHA-256 checksum.
+///
+/// # Errors
+///
+/// Returns a boxed error when the file cannot be opened, is not a valid EPUB,
+/// or cannot be checksummed.
 pub async fn parse_epub_meta(
     path: String,
 ) -> Result<BookMetadata, Box<dyn std::error::Error + Send + Sync>> {
@@ -92,6 +124,25 @@ pub async fn parse_epub_meta(
     .await?
 }
 
+/// Reads and concatenates the full HTML content of an EPUB file.
+///
+/// Iterates through the spine items, extracts `<body>` inner HTML, and
+/// replaces relative image `src` attributes with inline base64 data URIs
+/// so the resulting HTML is self-contained.
+///
+/// # Arguments
+///
+/// * `path` - Absolute path to the EPUB file.
+///
+/// # Returns
+///
+/// A single HTML string containing the concatenated body content of all
+/// spine items, with embedded base64 images.
+///
+/// # Errors
+///
+/// Returns a boxed error when the file cannot be opened or any spine item
+/// fails to parse.
 pub async fn get_epub_content(
     path: &str,
 ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
@@ -181,6 +232,19 @@ pub async fn get_epub_content(
     .await?
 }
 
+/// Resolves a relative image path against a base EPUB href.
+///
+/// Normalizes `..` components and converts backslashes to forward slashes
+/// for cross-platform compatibility.
+///
+/// # Arguments
+///
+/// * `base_href` - The EPUB resource's `href` attribute (acts as base path).
+/// * `relative_path` - The relative image path from an `src` attribute.
+///
+/// # Returns
+///
+/// The normalized, resolved path as a forward-slash-separated string.
 fn resolve_path(base_href: &str, relative_path: &str) -> String {
     let resolved_path = if let Some(parent) = Path::new(base_href).parent() {
         let joined = parent.join(relative_path);
@@ -215,6 +279,24 @@ fn resolve_path(base_href: &str, relative_path: &str) -> String {
     resolved_path.replace('\\', "/")
 }
 
+/// Retrieves the cover image bytes for a book by its database ID.
+///
+/// Looks up the book's file path in the database, opens the EPUB, and
+/// extracts the manifest's cover image.
+///
+/// # Arguments
+///
+/// * `book_id` - The book's database ID.
+///
+/// # Returns
+///
+/// Raw cover image bytes. Returns an empty `Vec<u8>` when the EPUB has no
+/// cover image in its manifest.
+///
+/// # Errors
+///
+/// Returns a boxed error when the book ID is not found, the file cannot be
+/// opened, or the cover image data cannot be read.
 pub async fn get_cover_image_by_book_id(
     book_id: i32,
 ) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {

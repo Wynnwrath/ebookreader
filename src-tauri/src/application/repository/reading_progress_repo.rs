@@ -12,6 +12,7 @@ use crate::infrastructure::database::models::reading_progress::{
 };
 use crate::infrastructure::database::models::schema::reading_progress;
 
+/// Diesel-backed implementation of [`ReadingProgressRepository`].
 pub struct ReadingProgressRepoImpl;
 
 impl ReadingProgressRepoImpl {
@@ -28,6 +29,7 @@ impl Default for ReadingProgressRepoImpl {
 
 #[async_trait]
 impl ReadingProgressRepository for ReadingProgressRepoImpl {
+    /// Returns the reading progress for a book, or `None` if not tracked.
     async fn find_by_book(
         &self,
         find_book_id: i32,
@@ -45,6 +47,9 @@ impl ReadingProgressRepository for ReadingProgressRepoImpl {
         }
     }
 
+    /// Upserts reading progress: inserts a new record or updates an existing
+    /// one matched on `book_id`. The `last_read_at` timestamp is set to the
+    /// current UTC time.
     async fn upsert(&self, progress: NewReadingProgress) -> Result<(), DomainError> {
         let _db_lock = lock_db();
         let mut conn = connect_from_pool().await?;
