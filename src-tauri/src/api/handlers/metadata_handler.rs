@@ -1,6 +1,6 @@
 use crate::application::state::AppState;
 use crate::domain::error::DomainError;
-use crate::infrastructure::file_handlers::epub_handler::BookMetadata;
+use crate::infrastructure::file_handlers::BookMetadata;
 
 pub async fn fetch_metadata(
     book_id: i32,

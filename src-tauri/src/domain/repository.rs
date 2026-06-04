@@ -39,6 +39,12 @@ pub trait BookRepository: Send + Sync {
     async fn delete(&self, id: i32) -> Result<(), DomainError>;
     async fn find_by_checksum(&self, checksum: &str) -> Result<Option<Book>, DomainError>;
     async fn search_by_title(&self, title: &str) -> Result<Vec<Book>, DomainError>;
+    async fn import_with_links(
+        &self,
+        book: NewBook,
+        author_ids: &[(i32, String)],
+        publisher_id: Option<i32>,
+    ) -> Result<Book, DomainError>;
 }
 
 #[async_trait]

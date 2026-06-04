@@ -45,6 +45,7 @@ tauri-plugin-process = "2.3.1"
 tauri-plugin-fs = "2.4.4"
 diesel_migrations = "2.3.1"
 serial_test = "3.5.0"
+pdf_oxide = { version = "0.3.59", features = ["rendering"] }
 
 
 # 👇 Force bundled SQLite

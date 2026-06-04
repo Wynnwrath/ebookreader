@@ -1,6 +1,6 @@
 use crate::api::handlers;
 use crate::application::state::AppState;
-use crate::infrastructure::file_handlers::epub_handler::BookMetadata;
+use crate::infrastructure::file_handlers::BookMetadata;
 use tauri::State;
 
 #[tauri::command]

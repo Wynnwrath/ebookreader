@@ -1,16 +1,13 @@
 use std::path::Path;
 
-use crate::application::repository::book_repo::BookRepoImpl;
 use crate::application::state::AppState;
 use crate::domain::dto::book_dto::BookDto;
 use crate::domain::error::DomainError;
 
 pub async fn import_book(path: String, state: &AppState) -> Result<BookDto, DomainError> {
-    let book_repo_impl = BookRepoImpl::new();
-
     crate::application::book::import_book(
         Path::new(&path),
-        &book_repo_impl,
+        &state.book_repo,
         &state.author_repo,
         &state.book_author_repo,
         &state.publisher_repo,
@@ -42,6 +39,28 @@ pub async fn get_book_details(
 
 pub async fn read_epub(path: String) -> Result<String, DomainError> {
     crate::application::book::read_epub(&path).await
+}
+
+pub async fn read_book(
+    path: String,
+    file_type: String,
+) -> Result<crate::application::book::BookContent, DomainError> {
+    crate::application::book::read_book(&path, &file_type).await
+}
+
+pub async fn get_pdf_page_count(path: String) -> Result<u32, DomainError> {
+    crate::infrastructure::file_handlers::pdf_handler::get_pdf_page_count(&path)
+        .await
+        .map_err(|e| DomainError::Parse(e.to_string()))
+}
+
+pub async fn read_pdf_page(
+    path: String,
+    page_number: u32,
+) -> Result<crate::infrastructure::file_handlers::pdf_handler::PdfPage, DomainError> {
+    crate::infrastructure::file_handlers::pdf_handler::read_pdf_page(&path, page_number)
+        .await
+        .map_err(|e| DomainError::Parse(e.to_string()))
 }
 
 pub async fn get_cover_img(book_id: i32, state: &AppState) -> Result<Option<Vec<u8>>, DomainError> {

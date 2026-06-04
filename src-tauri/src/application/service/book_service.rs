@@ -1,5 +1,5 @@
 use crate::domain::repository::BookRepository;
-use crate::infrastructure::file_handlers::epub_handler::BookMetadata;
+use crate::infrastructure::file_handlers::BookMetadata;
 use std::sync::Arc;
 
 pub async fn fetch_metadata(
@@ -20,9 +20,18 @@ pub async fn fetch_metadata(
         }
     };
 
-    let metadata = crate::infrastructure::file_handlers::epub_handler::parse_epub_meta(path)
-        .await
-        .map_err(|e| crate::domain::error::DomainError::Parse(e.to_string()))?;
+    let metadata = match book.file_type.as_deref() {
+        Some("pdf") => {
+            crate::infrastructure::file_handlers::pdf_handler::parse_pdf_meta(path)
+                .await
+                .map_err(|e| crate::domain::error::DomainError::Parse(e.to_string()))?
+        }
+        _ => {
+            crate::infrastructure::file_handlers::epub_handler::parse_epub_meta(path)
+                .await
+                .map_err(|e| crate::domain::error::DomainError::Parse(e.to_string()))?
+        }
+    };
 
     Ok(Some(metadata))
 }
@@ -34,12 +43,20 @@ pub async fn list_metadata(
     let mut all_metadata = Vec::new();
 
     for book in books {
-        if let Some(ref path) = book.file_path
-            && let Ok(meta) =
-                crate::infrastructure::file_handlers::epub_handler::parse_epub_meta(path.clone())
-                    .await
-        {
-            all_metadata.push(meta);
+        if let Some(ref path) = book.file_path {
+            let meta_result = match book.file_type.as_deref() {
+                Some("pdf") => {
+                    crate::infrastructure::file_handlers::pdf_handler::parse_pdf_meta(path.clone())
+                        .await
+                }
+                _ => {
+                    crate::infrastructure::file_handlers::epub_handler::parse_epub_meta(path.clone())
+                        .await
+                }
+            };
+            if let Ok(meta) = meta_result {
+                all_metadata.push(meta);
+            }
         }
     }
 

@@ -2,27 +2,15 @@ use base64::{Engine as _, engine::general_purpose};
 use rbook::Epub;
 use regex::Regex;
 use scraper::{Html, Selector};
-use serde::Serialize;
-use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
-use tokio::{fs, task::JoinError};
+use tokio::task::JoinError;
 use walkdir::WalkDir;
 
 use crate::infrastructure::database::database::connect_from_pool;
+use crate::infrastructure::file_handlers::BookMetadata;
+use crate::utils::file::compute_checksum;
 
 pub struct EpubHandler;
-
-#[derive(Serialize, Clone)]
-pub struct BookMetadata {
-    pub title: String,
-    pub authors: Vec<String>,
-    pub published_date: Option<String>,
-    pub publishers: Vec<String>,
-    pub isbn: Option<String>,
-    pub file_path: String,
-    pub cover_data: Option<(Vec<u8>, String)>,
-    pub checksum: String,
-}
 
 pub async fn scan_epubs<P: AsRef<Path> + Send + 'static>(
     dir: P,
@@ -225,12 +213,6 @@ fn resolve_path(base_href: &str, relative_path: &str) -> String {
     };
 
     resolved_path.replace('\\', "/")
-}
-
-pub async fn compute_checksum(path: &str) -> Result<String, std::io::Error> {
-    let data = fs::read(path).await?;
-    let hash = Sha256::digest(&data);
-    Ok(format!("{:x}", hash))
 }
 
 pub async fn get_cover_image_by_book_id(

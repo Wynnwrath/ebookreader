@@ -223,4 +223,13 @@ impl BookRepository for BookRepoImpl {
 
         Ok(rows.into_iter().map(Book::from).collect())
     }
+
+    async fn import_with_links(
+        &self,
+        book: NewBook,
+        author_ids: &[(i32, String)],
+        publisher_id: Option<i32>,
+    ) -> Result<Book, DomainError> {
+        self.import_with_links(book, author_ids, publisher_id).await
+    }
 }

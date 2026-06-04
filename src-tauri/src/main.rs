@@ -46,6 +46,9 @@ async fn main() {
         .invoke_handler(tauri::generate_handler![
             stellaron_lib::api::commands::book_commands::import_book,
             stellaron_lib::api::commands::book_commands::read_epub,
+            stellaron_lib::api::commands::book_commands::read_book,
+            stellaron_lib::api::commands::book_commands::get_pdf_page_count,
+            stellaron_lib::api::commands::book_commands::read_pdf_page,
             stellaron_lib::api::commands::book_commands::list_books,
             stellaron_lib::api::commands::book_commands::get_book_details,
             stellaron_lib::api::commands::book_commands::get_cover_img,

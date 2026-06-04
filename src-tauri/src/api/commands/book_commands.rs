@@ -20,6 +20,34 @@ pub async fn read_epub(path: String) -> Result<String, String> {
 }
 
 #[tauri::command]
+pub async fn read_book(
+    path: String,
+    file_type: String,
+) -> Result<crate::application::book::BookContent, String> {
+    match file_type.as_str() {
+        "epub" | "pdf" => {}
+        _ => return Err(format!("Unsupported file type: {}", file_type)),
+    }
+    handlers::book_handler::read_book(path, file_type)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_pdf_page_count(path: String) -> Result<u32, String> {
+    handlers::book_handler::get_pdf_page_count(path)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn read_pdf_page(path: String, page_number: u32) -> Result<crate::infrastructure::file_handlers::pdf_handler::PdfPage, String> {
+    handlers::book_handler::read_pdf_page(path, page_number)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn list_books(
     state: State<'_, AppState>,
 ) -> Result<Vec<crate::domain::dto::book_dto::BookDto>, String> {

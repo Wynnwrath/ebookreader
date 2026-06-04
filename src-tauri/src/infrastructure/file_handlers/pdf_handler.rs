@@ -1,3 +1,168 @@
-pub fn placeholder() {
-    // TODO: PDF handler
+use base64::{Engine as _, engine::general_purpose};
+use pdf_oxide::PdfDocument;
+use pdf_oxide::extractors::xmp::XmpExtractor;
+use pdf_oxide::rendering::{RenderOptions, render_page};
+use serde::Serialize;
+use std::path::{Path, PathBuf};
+use tokio::task::JoinError;
+use walkdir::WalkDir;
+
+use crate::infrastructure::file_handlers::BookMetadata;
+use crate::utils::file::compute_checksum;
+
+#[derive(Serialize, Clone)]
+pub struct PdfPage {
+    pub page_number: u32,
+    pub image_data: String,
+    pub width: u32,
+    pub height: u32,
+    pub text_spans: Vec<PdfTextSpan>,
+}
+
+#[derive(Serialize, Clone)]
+pub struct PdfTextSpan {
+    pub text: String,
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+}
+
+pub async fn scan_pdfs<P: AsRef<Path> + Send + 'static>(
+    dir: P,
+) -> Result<Vec<PathBuf>, JoinError> {
+    tokio::task::spawn_blocking(move || {
+        WalkDir::new(dir)
+            .into_iter()
+            .filter_map(Result::ok)
+            .filter(|e| e.file_type().is_file())
+            .map(|e| e.into_path())
+            .filter(|p| {
+                p.extension()
+                    .and_then(|s| s.to_str())
+                    .map(|ext| ext.eq_ignore_ascii_case("pdf"))
+                    .unwrap_or(false)
+            })
+            .collect()
+    })
+    .await
+}
+
+pub async fn parse_pdf_meta(
+    path: String,
+) -> Result<BookMetadata, Box<dyn std::error::Error + Send + Sync>> {
+    let checksum = compute_checksum(&path).await?;
+
+    tokio::task::spawn_blocking(move || {
+        let doc = PdfDocument::open(&path)?;
+
+        let mut title = "Unknown Title".to_string();
+        let mut authors = vec!["Unknown Author".to_string()];
+        let mut publishers = vec!["Unknown Publisher".to_string()];
+        let mut published_date: Option<String> = None;
+
+        if let Ok(Some(xmp)) = XmpExtractor::extract(&doc) {
+            if let Some(t) = &xmp.dc_title
+                && !t.is_empty()
+            {
+                title = t.clone();
+            }
+
+            if !xmp.dc_creator.is_empty() {
+                authors = xmp.dc_creator.clone();
+            }
+
+            if let Some(tool) = &xmp.xmp_creator_tool
+                && !tool.is_empty()
+            {
+                publishers = vec![tool.clone()];
+            }
+
+            if let Some(date) = &xmp.xmp_create_date {
+                published_date = Some(date.clone());
+            }
+        }
+
+        Ok(BookMetadata {
+            title,
+            authors,
+            published_date,
+            publishers,
+            isbn: None,
+            file_path: path,
+            cover_data: None,
+            checksum,
+        })
+    })
+    .await?
+}
+
+pub async fn get_pdf_cover(
+    path: &str,
+) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {
+    let path_str = path.to_string();
+    tokio::task::spawn_blocking(move || {
+        let doc = PdfDocument::open(&path_str)?;
+        let opts = RenderOptions::with_dpi(150);
+        let image = render_page(&doc, 0, &opts)?;
+        Ok(image.data)
+    })
+    .await?
+}
+
+pub async fn get_pdf_page_count(
+    path: &str,
+) -> Result<u32, Box<dyn std::error::Error + Send + Sync>> {
+    let path_str = path.to_string();
+    tokio::task::spawn_blocking(move || {
+        let doc = PdfDocument::open(&path_str)?;
+        let count = doc.page_count().unwrap_or(0) as u32;
+        Ok(count)
+    })
+    .await?
+}
+
+pub async fn read_pdf_page(
+    path: &str,
+    page_number: u32,
+) -> Result<PdfPage, Box<dyn std::error::Error + Send + Sync>> {
+    let path_str = path.to_string();
+    tokio::task::spawn_blocking(move || {
+        let doc = PdfDocument::open(&path_str)?;
+        let page_count = doc.page_count().unwrap_or(0);
+
+        if (page_number as usize) >= page_count {
+            return Err(format!(
+                "Page {} out of range (PDF has {} pages)",
+                page_number, page_count
+            )
+            .into());
+        }
+
+        let idx = page_number as usize;
+        let render_opts = RenderOptions::with_dpi(150);
+        let image = render_page(&doc, idx, &render_opts)?;
+        let image_data = general_purpose::STANDARD.encode(&image.data);
+
+        let spans = doc.extract_spans(idx).unwrap_or_default();
+        let text_spans: Vec<PdfTextSpan> = spans
+            .into_iter()
+            .map(|s| PdfTextSpan {
+                text: s.text,
+                x: s.bbox.x,
+                y: s.bbox.y,
+                width: s.bbox.width,
+                height: s.bbox.height,
+            })
+            .collect();
+
+        Ok(PdfPage {
+            page_number,
+            image_data,
+            width: image.width,
+            height: image.height,
+            text_spans,
+        })
+    })
+    .await?
 }

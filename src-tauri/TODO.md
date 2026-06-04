@@ -7,7 +7,7 @@
   - Remove multi user support
   - Simplify relations
   - Optimize for single user local usage
-- [ ] (FEAT) Add PDF support
+- [x] (FEAT) Add PDF support
 - [ ] (FEAT) Add MOBI support
 - [ ] (TESTS) Rewrite tests to match new DB structure
 - [ ] (FEAT) Custom CSS theming support
