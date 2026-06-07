@@ -1,0 +1,16 @@
+- [ ] (REFAC) Move database models to src/domain folder
+- [ ] (REFAC) Move responses to src/domain folder
+- [ ] (REFAC) Move requests to src/domain folder
+- [ ] (REFAC) Move services to src/application/service folder
+- [ ] (REFAC) Move repositories to src/application/repositories folder
+- [ ] (REFAC) Rewrite entire DB structure without affecting existing functionality
+  - Remove multi user support
+  - Simplify relations
+  - Optimize for single user local usage
+- [x] (FEAT) Add PDF support
+- [ ] (FEAT) Add MOBI support
+- [ ] (TESTS) Rewrite tests to match new DB structure
+- [ ] (FEAT) Custom CSS theming support
+- [ ] (FEAT) Store reading progress in the database
+- [ ] (FEAT) Implement favorites functionality
+- [ ] (DOCS) Write comprehensive README with screenshots and instructions

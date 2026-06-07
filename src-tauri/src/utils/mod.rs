@@ -1,4 +1,5 @@
+//! Shared utilities for checksums and custom serde serialization.
+
 pub mod deserializers;
-pub mod mappers;
-pub mod response;
+pub mod file;
 pub mod serializers;

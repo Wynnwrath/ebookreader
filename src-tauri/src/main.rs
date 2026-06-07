@@ -1,74 +1,89 @@
-// Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use diesel::Connection;
-use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
-use stellaron_lib::commands::*;
-use tauri::AppHandle;
+//! Stellaron — desktop ebook reader built with Tauri v2.
+//!
+//! Initializes the SQLite database, runs pending migrations, wires up the
+//! application state with all repository implementations, and launches the
+//! Tauri window with registered IPC commands.
 
-pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./src/data/migrations");
+use std::sync::Arc;
+
+use diesel::Connection;
+use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
+
+/// Embedded SQL migrations applied on startup.
+pub const MIGRATIONS: EmbeddedMigrations =
+    embed_migrations!("./src/infrastructure/database/migrations");
+
+use stellaron_lib::application::state::AppState;
+use stellaron_lib::infrastructure::database::database::create_pool;
 
 #[tokio::main]
 async fn main() {
     dotenvy::dotenv().ok();
 
-    let database_url = stellaron_lib::data::database::get_db_path();
+    let database_url =
+        std::env::var("DATABASE_URL").unwrap_or_else(|_| "./database.db".to_string());
 
-    let mut connection = diesel::SqliteConnection::establish(&database_url).unwrap();
+    let mut connection = diesel::SqliteConnection::establish(&database_url)
+        .expect("Error establishing database connection");
 
     connection
         .run_pending_migrations(MIGRATIONS)
         .expect("Error running database migrations");
-    run();
-}
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
-fn run() {
+    let _pool = create_pool(&database_url);
+
+    let app_state = AppState {
+        book_repo: Arc::new(stellaron_lib::application::repository::book_repo::BookRepoImpl::new()),
+        author_repo: Arc::new(stellaron_lib::application::repository::author_repo::AuthorRepoImpl::new()),
+        publisher_repo: Arc::new(stellaron_lib::application::repository::publisher_repo::PublisherRepoImpl::new()),
+        book_author_repo: Arc::new(stellaron_lib::application::repository::book_author_repo::BookAuthorRepoImpl::new()),
+        bookmark_repo: Arc::new(stellaron_lib::application::repository::bookmark_repo::BookmarkRepoImpl::new()),
+        annotation_repo: Arc::new(stellaron_lib::application::repository::annotation_repo::AnnotationRepoImpl::new()),
+        reading_progress_repo: Arc::new(stellaron_lib::application::repository::reading_progress_repo::ReadingProgressRepoImpl::new()),
+    };
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_fs::init())
+        .manage(app_state)
         .invoke_handler(tauri::generate_handler![
-            // Book Commands
-            book_commands::import_book,
-            book_commands::read_epub,
-            book_commands::list_books,
-            book_commands::get_book_details,
-            book_commands::add_bookmark,
-            book_commands::get_bookmarks,
-            book_commands::delete_bookmark,
-            book_commands::add_annotation,
-            book_commands::get_annotations,
-            book_commands::delete_annotation,
-            book_commands::scan_books_directory,
-            book_commands::is_book_read,
-            book_commands::get_cover_img,
-            book_commands::remove_book,
-            book_commands::get_reading_progress,
-            book_commands::update_reading_progress,
-            book_commands::get_all_reading_progress,
-            // Library Commands
-            library_commands::add_book_to_user_library,
-            library_commands::list_user_library_books,
-            library_commands::remove_book_from_user_library,
-            // Metadata Commands
-            metadata_commands::fetch_metadata,
-            metadata_commands::list_metadata,
-            metadata_commands::update_metadata,
-            // Auth Commands
-            auth_command::login,
-            auth_command::register,
-            // Account Commands
-            account_commands::get_account_info,
-            // General Commands
+            stellaron_lib::api::commands::book_commands::import_book,
+            stellaron_lib::api::commands::book_commands::read_epub,
+            stellaron_lib::api::commands::book_commands::read_book,
+            stellaron_lib::api::commands::book_commands::get_pdf_page_count,
+            stellaron_lib::api::commands::book_commands::read_pdf_page,
+            stellaron_lib::api::commands::book_commands::list_books,
+            stellaron_lib::api::commands::book_commands::get_book_details,
+            stellaron_lib::api::commands::book_commands::get_cover_img,
+            stellaron_lib::api::commands::book_commands::remove_book,
+            stellaron_lib::api::commands::bookmark_commands::add_bookmark,
+            stellaron_lib::api::commands::bookmark_commands::get_bookmarks,
+            stellaron_lib::api::commands::bookmark_commands::delete_bookmark,
+            stellaron_lib::api::commands::annotation_commands::add_annotation,
+            stellaron_lib::api::commands::annotation_commands::get_annotations,
+            stellaron_lib::api::commands::annotation_commands::delete_annotation,
+            stellaron_lib::api::commands::library_commands::scan_books_directory,
+            stellaron_lib::api::commands::reading_progress_commands::update_reading_progress,
+            stellaron_lib::api::commands::reading_progress_commands::get_reading_progress,
+            stellaron_lib::api::commands::metadata_commands::fetch_metadata,
+            stellaron_lib::api::commands::metadata_commands::list_metadata,
+            stellaron_lib::api::commands::metadata_commands::update_metadata,
             exit_app,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
 
+/// Cleanly exits the application.
+///
+/// # Arguments
+///
+/// * `app` - The Tauri application handle used to trigger shutdown.
 #[tauri::command]
-fn exit_app(app: AppHandle) {
+fn exit_app(app: tauri::AppHandle) {
     app.exit(0);
 }
