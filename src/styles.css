@@ -1,33 +1,41 @@
 @import "tailwindcss";
 
-/* THIS IS THE FIX 
-  By defining these inside @theme, we force Tailwind to create 
-  classes like 'bg-sidebar', 'text-primary', etc. that map 
-  directly to your theme.css variables.
-*/
 @theme {
-  /* Backgrounds */
+  /* Backgrounds & Surfaces */
   --color-bg: var(--color-bg);
   --color-surface: var(--color-surface);
-  --color-header: var(--color-header);
-  --color-sidebar: var(--color-sidebar);
+  --color-surface-container: var(--color-surface-container);
+  --color-surface-container-low: var(--color-surface-container-low);
+  --color-surface-container-high: var(--color-surface-container-high);
+  --color-surface-container-highest: var(--color-surface-container-highest);
+  --color-surface-container-lowest: var(--color-surface-container-lowest);
+  --color-on-surface: var(--color-on-surface);
+  --color-on-surface-variant: var(--color-on-surface-variant);
 
-  /* Accents */
+  /* Accents & Outlines */
   --color-primary: var(--color-primary);
   --color-secondary: var(--color-secondary);
   --color-tertiary: var(--color-tertiary);
-  --color-glow: var(--color-glow);
-
-  /* Text */
-  --color-text: var(--color-text);
-  --color-text-dim: var(--color-text-dim);
+  --color-outline-variant: var(--color-outline-variant);
 
   /* Glass & Borders */
   --color-glass: var(--color-glass);
   --color-border: var(--color-border);
 
   /* Fonts */
-  --font-roboto: "Roboto", sans-serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-serif: "Playfair Display", Georgia, serif;
+
+  /* Font Families based on design system */
+  --font-display-lg: "Playfair Display", serif;
+  --font-headline-xl: "Playfair Display", serif;
+  --font-headline-lg: "Playfair Display", serif;
+  --font-headline-md: "Playfair Display", serif;
+  --font-body-lg: "Inter", sans-serif;
+  --font-body-md: "Inter", sans-serif;
+  --font-label-lg: "Inter", sans-serif;
+  --font-label-md: "Inter", sans-serif;
+  --font-label-sm: "Inter", sans-serif;
 
   /* Animations */
   --animate-pop-in: popIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -44,30 +52,7 @@
   scrollbar-width: none;
 }
 
-.spaceGlow {
-  display: inline-block;
-  font-weight: 700;
-  background: linear-gradient(
-    90deg,
-    #ff9ecb,
-    #ffb3c6,
-    #ffd36e,
-    #ffb3c6,
-    #ff9ecb
-  );
-  background-size: 300%;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: spaceGlow 6s ease-in-out infinite;
-  text-shadow: 0 0 10px rgba(255, 179, 198, 0.4),
-               0 0 20px rgba(255, 211, 110, 0.3);
-}
 
-@keyframes spaceGlow {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
 
 /* Keyframes for the popIn animation used in @theme */
 @keyframes popIn {
@@ -99,4 +84,58 @@
 
 .light-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: #94a3b8; /* Darker gray on hover */
+}
+
+/* --- Premium Animations & Overhaul Page Transitions --- */
+
+/* Page transition animation */
+.page-transition {
+  animation: pageFadeInSlide 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes pageFadeInSlide {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Card entry animation - bottom to top */
+.card-entry {
+  animation: cardFadeInUp 0.5s cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+
+@keyframes cardFadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Staggered card animations delay */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
+.stagger-5 { animation-delay: 0.25s; }
+
+/* Float-up hover effect for card books */
+.book-card-hover {
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), 
+              box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1), 
+              border-color 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.book-card-hover:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 16px 32px -12px rgba(0, 0, 0, 0.4);
+  border-color: var(--color-primary);
 }
