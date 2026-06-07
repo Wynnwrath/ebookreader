@@ -1,5 +1,6 @@
 use std::{
     env,
+    path::Path,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -18,6 +19,25 @@ use diesel_async::{
 use dotenvy::dotenv;
 use once_cell::sync::Lazy;
 use tokio::sync::Mutex;
+
+pub fn get_db_path() -> String {
+    if let Ok(url) = env::var("DATABASE_URL") {
+        return url;
+    }
+
+    let base_dir = if cfg!(windows) {
+        env::var("LOCALAPPDATA")
+            .or_else(|_| env::var("APPDATA"))
+            .unwrap_or_else(|_| ".".to_string())
+    } else {
+        env::var("HOME").unwrap_or_else(|_| ".".to_string())
+    };
+
+    let app_dir = Path::new(&base_dir).join("Stellaron");
+    let _ = std::fs::create_dir_all(&app_dir);
+
+    app_dir.join("database.db").to_string_lossy().to_string()
+}
 
 /// Returns a connection from the database connection pool
 ///
@@ -50,7 +70,7 @@ pub async fn connect_from_pool(
 static DB_POOL: Lazy<Pool<SyncConnectionWrapper<SqliteConnection>>> = Lazy::new(|| {
     dotenv().ok();
 
-    let database_path = env::var("DATABASE_URL").unwrap_or_else(|_| "./database.db".to_string());
+    let database_path = get_db_path();
     let config =
         AsyncDieselConnectionManager::<SyncConnectionWrapper<SqliteConnection>>::new(database_path);
 

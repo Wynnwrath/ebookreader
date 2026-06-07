@@ -12,8 +12,7 @@ pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./src/data/migrati
 async fn main() {
     dotenvy::dotenv().ok();
 
-    let database_url =
-        std::env::var("DATABASE_URL").unwrap_or_else(|_| "./database.db".to_string());
+    let database_url = stellaron_lib::data::database::get_db_path();
 
     let mut connection = diesel::SqliteConnection::establish(&database_url).unwrap();
 
@@ -46,6 +45,9 @@ fn run() {
             book_commands::is_book_read,
             book_commands::get_cover_img,
             book_commands::remove_book,
+            book_commands::get_reading_progress,
+            book_commands::update_reading_progress,
+            book_commands::get_all_reading_progress,
             // Library Commands
             library_commands::add_book_to_user_library,
             library_commands::list_user_library_books,

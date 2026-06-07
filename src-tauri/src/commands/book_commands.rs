@@ -287,3 +287,78 @@ pub async fn remove_book(book_id: i32) -> Result<bool, String> {
 
     Ok(true)
 }
+
+/// Command to get reading progress for a user in a specific book
+#[tauri::command]
+pub async fn get_reading_progress(
+    user_id: i32,
+    book_id: i32,
+) -> Result<Option<crate::data::models::reading_progress::ReadingProgress>, String> {
+    println!("DEBUG: get_reading_progress called for user_id = {}, book_id = {}", user_id, book_id);
+    let repo = ReadingProgressRepo::new().await;
+    let res = repo.get_by_user_and_book(user_id, book_id)
+        .await
+        .map_err(|e| {
+            let err_str = e.to_string();
+            eprintln!("DEBUG: get_reading_progress database error: {}", err_str);
+            err_str
+        })?;
+    println!("DEBUG: get_reading_progress result: {:?}", res);
+    Ok(res)
+}
+
+/// Command to update reading progress for a user in a specific book
+#[tauri::command]
+pub async fn update_reading_progress(
+    user_id: i32,
+    book_id: i32,
+    current_position: String,
+    chapter_title: Option<String>,
+    page_number: Option<i32>,
+    progress_percentage: Option<f32>,
+) -> Result<(), String> {
+    println!(
+        "DEBUG: update_reading_progress called: user_id = {}, book_id = {}, pos = {}, chapter = {:?}, page = {:?}, percent = {:?}",
+        user_id, book_id, current_position, chapter_title, page_number, progress_percentage
+    );
+    let repo = ReadingProgressRepo::new().await;
+    let progress = crate::data::models::reading_progress::NewReadingProgress {
+        user_id,
+        book_id,
+        current_position: &current_position,
+        chapter_title: chapter_title.as_deref(),
+        page_number,
+        progress_percentage,
+    };
+    repo.upsert(progress).await.map_err(|e| {
+        let err_str = e.to_string();
+        eprintln!("DEBUG: update_reading_progress database error: {}", err_str);
+        err_str
+    })?;
+    println!("DEBUG: update_reading_progress successfully saved.");
+    Ok(())
+}
+
+/// Command to get all reading progress for a user
+#[tauri::command]
+pub async fn get_all_reading_progress(
+    user_id: i32,
+) -> Result<Vec<crate::data::models::reading_progress::ReadingProgress>, String> {
+    println!("DEBUG: get_all_reading_progress called for user_id = {}", user_id);
+    let repo = ReadingProgressRepo::new().await;
+    match repo.get_by_user(user_id).await.map_err(|e| {
+        let err_str = e.to_string();
+        eprintln!("DEBUG: get_all_reading_progress database error: {}", err_str);
+        err_str
+    })? {
+        Some(list) => {
+            println!("DEBUG: get_all_reading_progress found {} records.", list.len());
+            Ok(list)
+        }
+        None => {
+            println!("DEBUG: get_all_reading_progress found 0 records.");
+            Ok(Vec::new())
+        }
+    }
+}
+
