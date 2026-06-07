@@ -22,7 +22,8 @@ import {
   FiTag,
   FiX,
   FiClock,
-  FiFileText
+  FiFileText,
+  FiCalendar
 } from "react-icons/fi";
 
 export interface RootLayoutProps {
@@ -211,10 +212,11 @@ const RootLayout: React.FC<RootLayoutProps> = ({ userId }) => {
   };
 
   const navLinks = [
-    { name: "Home", path: "/", icon: FiHome },
-    { name: "Library", path: "/library", icon: FiBookOpen },
+    { name: "Dashboard", path: "/", icon: FiHome },
+    { name: "Catalog", path: "/library", icon: FiBookOpen },
     { name: "Collections", path: "/collections", icon: FiFolder },
     { name: "Profile", path: "/profile", icon: FiUser },
+    { name: "Book Plans", path: "/plans", icon: FiCalendar },
   ];
 
   return (

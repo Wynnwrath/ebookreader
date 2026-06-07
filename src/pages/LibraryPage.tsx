@@ -160,6 +160,21 @@ const LibraryPage: React.FC = () => {
     }
   };
 
+  const handleImportFolder = async () => {
+    try {
+      const selected = await open({
+        multiple: false,
+        directory: true
+      });
+      if (selected && typeof selected === "string") {
+        await invoke("scan_books_directory", { directoryPath: selected });
+        await loadLibrary();
+      }
+    } catch (err) {
+      console.error("Failed to import folder:", err);
+    }
+  };
+
   const handleDeleteBook = async (id: number, title: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm(`Are you sure you want to delete "${title}"?`)) {
@@ -286,10 +301,19 @@ const LibraryPage: React.FC = () => {
 
           <button
             onClick={handleImport}
-            className="font-semibold text-xs py-1.5 px-4 bg-tertiary text-surface-container-lowest hover:bg-tertiary/90 rounded-lg flex items-center gap-1.5 transition cursor-pointer"
+            className="font-semibold text-xs py-1.5 px-4 bg-tertiary text-surface-container-lowest hover:bg-tertiary/90 rounded-lg flex items-center gap-1.5 transition cursor-pointer shadow-sm"
+            title="Import a single EPUB file"
           >
             <FiPlus className="w-3.5 h-3.5" />
-            <span>Import</span>
+            <span>Import File</span>
+          </button>
+          <button
+            onClick={handleImportFolder}
+            className="font-semibold text-xs py-1.5 px-4 bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/35 text-on-surface rounded-lg flex items-center gap-1.5 transition cursor-pointer shadow-sm"
+            title="Import an entire directory containing EPUB files"
+          >
+            <FiFolder className="w-3.5 h-3.5" />
+            <span>Import Folder</span>
           </button>
         </div>
       </section>
@@ -355,14 +379,25 @@ const LibraryPage: React.FC = () => {
           <FiBookOpen className="w-12 h-12 text-text-dim opacity-40 animate-pulse" />
           <h3 className="font-bold text-lg">No books found</h3>
           <p className="text-xs text-text-dim max-w-sm">No items matched your current filter or search queries. Import a new book or check your search query.</p>
-          <Button
-            onClick={handleImport}
-            leftIcon={FiPlus}
-            size="sm"
-            className="font-semibold"
-          >
-            Import E-book
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={handleImport}
+              leftIcon={FiPlus}
+              size="sm"
+              className="font-semibold"
+            >
+              Import File
+            </Button>
+            <Button
+              onClick={handleImportFolder}
+              leftIcon={FiFolder}
+              size="sm"
+              variant="secondary"
+              className="font-semibold"
+            >
+              Import Folder
+            </Button>
+          </div>
         </div>
       ) : viewMode === "grid" ? (
         

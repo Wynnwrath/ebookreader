@@ -86,6 +86,22 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
     return (localStorage.getItem("stellaron-reader-layout") as "classic" | "redesign") || "redesign";
   });
 
+  const getPageScrollStep = (container: HTMLDivElement): number => {
+    const containerStyle = window.getComputedStyle(container);
+    const paddingLeft = parseFloat(containerStyle.paddingLeft) || 0;
+    const paddingRight = parseFloat(containerStyle.paddingRight) || 0;
+    const visibleWidth = container.clientWidth - paddingLeft - paddingRight;
+
+    const article = container.querySelector("article");
+    let columnGap = 0;
+    if (article) {
+      const articleStyle = window.getComputedStyle(article);
+      columnGap = parseFloat(articleStyle.columnGap) || 0;
+    }
+
+    return visibleWidth + columnGap;
+  };
+
   const toggleReaderLayout = () => {
     const next = readerLayoutMode === "classic" ? "redesign" : "classic";
     setReaderLayoutMode(next);
@@ -111,11 +127,13 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
       if (readerLayoutMode !== "redesign") return;
       if (e.key === "ArrowLeft") {
         if (readerRef.current) {
-          readerRef.current.scrollBy({ left: -readerRef.current.clientWidth, behavior: "smooth" });
+          const step = getPageScrollStep(readerRef.current);
+          readerRef.current.scrollBy({ left: -step, behavior: "smooth" });
         }
       } else if (e.key === "ArrowRight") {
         if (readerRef.current) {
-          readerRef.current.scrollBy({ left: readerRef.current.clientWidth, behavior: "smooth" });
+          const step = getPageScrollStep(readerRef.current);
+          readerRef.current.scrollBy({ left: step, behavior: "smooth" });
         }
       }
     };
@@ -338,9 +356,21 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
     if (!container) return;
 
     if (readerLayoutMode === "redesign") {
-      const { scrollLeft, scrollWidth, clientWidth } = container;
-      const estimatedTotal = Math.max(1, Math.ceil(scrollWidth / clientWidth));
-      const estimatedCurrent = Math.min(estimatedTotal, Math.max(1, Math.ceil(scrollLeft / clientWidth) + 1));
+      const { scrollLeft, scrollWidth } = container;
+      const containerStyle = window.getComputedStyle(container);
+      const paddingLeft = parseFloat(containerStyle.paddingLeft) || 0;
+      const paddingRight = parseFloat(containerStyle.paddingRight) || 0;
+      const step = getPageScrollStep(container) || 1;
+
+      const article = container.querySelector("article");
+      let columnGap = 0;
+      if (article) {
+        const articleStyle = window.getComputedStyle(article);
+        columnGap = parseFloat(articleStyle.columnGap) || 0;
+      }
+
+      const estimatedTotal = Math.max(1, Math.ceil((scrollWidth - paddingLeft - paddingRight + columnGap) / step));
+      const estimatedCurrent = Math.min(estimatedTotal, Math.max(1, Math.round(scrollLeft / step) + 1));
       setTotalPages(estimatedTotal);
       setCurrentPage(estimatedCurrent);
     } else {
@@ -474,7 +504,7 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
 
       {/* Chapters Left Hover Drawer */}
       <nav 
-        className={`fixed left-0 top-0 h-screen w-80 bg-surface-container-highest/95 backdrop-blur-2xl border-r border-outline-variant/20 shadow-2xl transition-all duration-500 cubic-bezier(0.16, 1, 0.3, 1) z-40 flex flex-col p-6 origin-left ${
+        className={`fixed left-0 top-0 h-screen w-80 bg-surface-container-highest/95 backdrop-blur-2xl border-r border-outline-variant/20 shadow-2xl z-40 flex flex-col p-6 origin-left reader-drawer-left ${
           isLeftHovered 
             ? "translate-x-0 opacity-100 pointer-events-auto" 
             : "-translate-x-full opacity-0 pointer-events-none"
@@ -541,7 +571,7 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
 
       {/* Bookmarks Right Hover Drawer */}
       <nav 
-        className={`fixed right-0 top-0 h-screen w-80 bg-surface-container-highest/95 backdrop-blur-2xl border-l border-outline-variant/20 shadow-2xl transition-all duration-500 cubic-bezier(0.16, 1, 0.3, 1) z-40 flex flex-col p-6 origin-right ${
+        className={`fixed right-0 top-0 h-screen w-80 bg-surface-container-highest/95 backdrop-blur-2xl border-l border-outline-variant/20 shadow-2xl z-40 flex flex-col p-6 origin-right reader-drawer-right ${
           isRightHovered 
             ? "translate-x-0 opacity-100 pointer-events-auto" 
             : "translate-x-full opacity-0 pointer-events-none"
@@ -611,7 +641,8 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
         <button
           onClick={() => {
             if (readerRef.current) {
-              readerRef.current.scrollBy({ left: -readerRef.current.clientWidth, behavior: "smooth" });
+              const step = getPageScrollStep(readerRef.current);
+              readerRef.current.scrollBy({ left: -step, behavior: "smooth" });
             }
           }}
           disabled={currentPage === 1}
@@ -627,7 +658,8 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
         <button
           onClick={() => {
             if (readerRef.current) {
-              readerRef.current.scrollBy({ left: readerRef.current.clientWidth, behavior: "smooth" });
+              const step = getPageScrollStep(readerRef.current);
+              readerRef.current.scrollBy({ left: step, behavior: "smooth" });
             }
           }}
           disabled={currentPage === totalPages}
@@ -640,7 +672,7 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
 
       {/* 2. HOVER-TRIGGERED TOP BAR */}
       <header 
-        className={`fixed top-0 left-0 w-full bg-surface-container/90 backdrop-blur-md border-b border-outline-variant/10 shadow-sm px-8 py-4 flex justify-between items-center z-30 transition-all duration-300 h-16 ${
+        className={`fixed top-0 left-0 w-full bg-surface-container/90 backdrop-blur-md border-b border-outline-variant/10 shadow-sm px-8 py-4 flex justify-between items-center z-30 h-16 reader-header-bar ${
           readerLayoutMode === "redesign"
             ? (isHeaderHovered || isSettingsOpen)
               ? "opacity-100 translate-y-0"

@@ -11,6 +11,7 @@ import PlainLayout from "./layout/PlainLayout";
 import { HelpPage, SettingsPage } from "./pages/InfoPages";
 import ProfilePage from "./pages/ProfilePage";
 import BookDetailPage from "./pages/BookDetailPage";
+import BookPlansPage from "./pages/BookPlansPage";
 import { invoke } from "@tauri-apps/api/core";
 
 interface UserInfo {
@@ -25,7 +26,6 @@ const App: React.FC = () => {
   useEffect(() => {
     async function initUser() {
       try {
-        // Silently register the default user 'cruiz'
         await invoke("register", { username: "cruiz", password: "password" }).catch(() => {
           // Ignore registration errors if user already exists
         });
@@ -64,6 +64,7 @@ const App: React.FC = () => {
         <Route path="/library" element={<LibraryPage />} />
         <Route path="/collections" element={<CollectionsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/plans" element={<BookPlansPage />} />
         <Route path="/book-details/:id" element={<BookDetailPage />} />
       </Route>
 

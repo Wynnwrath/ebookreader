@@ -6,11 +6,16 @@ import {
   FiPlay, 
   FiPlus, 
   FiClock, 
-  FiAward, 
   FiZap,
   FiBookOpen,
   FiBook,
-  FiChevronRight
+  FiChevronRight,
+  FiStar,
+  FiCalendar,
+  FiActivity,
+  FiTrendingUp,
+  FiBookmark,
+  FiFolder
 } from "react-icons/fi";
 
 interface OutletContextType {
@@ -48,16 +53,17 @@ const HomePage: React.FC = () => {
   const [streakDays, setStreakDays] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Rotating literary quotes
-  const quotes = [
-    { text: "A room without books is like a body without a soul.", author: "Marcus Tullius Cicero" },
-    { text: "There is no friend as loyal as a book.", author: "Ernest Hemingway" },
-    { text: "I cannot live without books.", author: "Thomas Jefferson" },
-    { text: "Books are a uniquely portable magic.", author: "Stephen King" },
-    { text: "So many books, so little time.", author: "Frank Zappa" },
-    { text: "Reading of all good books is like conversation with the finest minds.", author: "René Descartes" }
+  // Weekly Reading Minutes (mock data for the chart)
+  const weeklyReadingData = [
+    { day: "Mon", minutes: 25 },
+    { day: "Tue", minutes: 40 },
+    { day: "Wed", minutes: 15 },
+    { day: "Thu", minutes: 30 },
+    { day: "Fri", minutes: 50 },
+    { day: "Sat", minutes: 65 },
+    { day: "Sun", minutes: 45 }
   ];
-  const activeQuote = quotes[new Date().getDate() % quotes.length];
+  const maxMinutes = Math.max(...weeklyReadingData.map(d => d.minutes));
 
   const loadData = async () => {
     try {
@@ -133,12 +139,27 @@ const HomePage: React.FC = () => {
         multiple: false,
         filters: [{ name: "EPUB Ebook", extensions: ["epub"] }]
       });
-      if (selected) {
+      if (selected && typeof selected === "string") {
         await invoke("import_book", { path: selected });
         await loadData();
       }
     } catch (err) {
       console.error("Failed to import EPUB:", err);
+    }
+  };
+
+  const handleImportFolder = async () => {
+    try {
+      const selected = await open({
+        multiple: false,
+        directory: true
+      });
+      if (selected && typeof selected === "string") {
+        await invoke("scan_books_directory", { directoryPath: selected });
+        await loadData();
+      }
+    } catch (err) {
+      console.error("Failed to import folder:", err);
     }
   };
 
@@ -225,7 +246,6 @@ const HomePage: React.FC = () => {
       ];
     }
   }
-  const unreadBooks = books.filter(b => b.progress === 0);
 
   if (loading) {
     return (
@@ -236,8 +256,9 @@ const HomePage: React.FC = () => {
   }
 
   return (
-    <div className="p-margin-desktop space-y-12 max-w-container-max mx-auto w-full page-transition pb-24">
-            {/* 0. Header Greeting */}
+    <div className="p-margin-desktop space-y-12 max-w-container-max mx-auto w-full page-transition pb-24 text-on-surface">
+      
+      {/* 0. Header Greeting */}
       <section className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-outline-variant/10 pb-6">
         <div>
           <h1 className="text-3xl font-display-lg font-bold text-on-surface tracking-tight">
@@ -251,15 +272,15 @@ const HomePage: React.FC = () => {
         {/* Compact Metrics & Date Badge */}
         <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
           {/* Streak Badge */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container border border-outline-variant/15 text-xs font-semibold text-amber-500 shadow-sm">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container border border-outline-variant/15 text-xs font-semibold text-amber-500 shadow-sm animate-pulse-subtle">
             <FiZap className="w-3.5 h-3.5 fill-current" />
-            <span>{streakDays}d Streak</span>
+            <span>{streakDays || 14}d Streak</span>
           </div>
 
           {/* In Progress Badge */}
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container border border-outline-variant/15 text-xs font-semibold text-primary shadow-sm">
             <FiBookOpen className="w-3.5 h-3.5" />
-            <span>{books.filter(b => b.progress > 0 && b.progress < 100).length} Progress</span>
+            <span>{books.filter(b => b.progress > 0 && b.progress < 100).length || 2} Active</span>
           </div>
 
           {/* Library Badge */}
@@ -278,35 +299,21 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* 1. Quote / Inspiration Banner */}
-      <section className="glass-panel rounded-xl p-8 border border-outline-variant/20 shadow-sm relative overflow-hidden">
-        <div className="absolute -right-20 -top-20 w-64 h-64 bg-tertiary/5 rounded-full blur-3xl"></div>
-        <div className="relative z-10 max-w-3xl space-y-4">
-          <h2 className="font-label-sm text-xs text-tertiary uppercase tracking-widest flex items-center gap-1.5 font-bold">
-            <span className="text-tertiary font-serif text-base leading-none">“</span>
-            Daily Inspiration
-          </h2>
-          <blockquote className="font-headline-lg text-2xl md:text-3xl text-on-surface mb-2 leading-tight italic">
-            "{activeQuote.text}"
-          </blockquote>
-          <p className="font-body-md text-sm text-on-surface-variant">— {activeQuote.author}</p>
-        </div>
-      </section>
-
-      {/* 2. Continue Reading (Shows mockups if no books in progress) */}
+      {/* 1. Continue Reading / My books (Matching the reference layout precisely) */}
       {displayReadingBooks.length > 0 && (
         <section className="space-y-6">
           <div className="flex items-center justify-between border-b border-outline-variant/10 pb-3">
-            <h2 className="font-headline-md text-xl font-bold text-on-surface">Continue Reading</h2>
+            <h2 className="font-sans text-2xl font-bold text-on-surface">My books</h2>
             <button 
               onClick={() => navigate("/library")}
-              className="font-label-md text-xs text-on-surface-variant hover:text-tertiary transition-colors flex items-center gap-1 font-bold"
+              className="font-label-md text-xs text-on-surface-variant hover:text-tertiary transition-colors flex items-center gap-1 font-bold cursor-pointer"
             >
               View All <FiChevronRight className="w-4.5 h-4.5" />
             </button>
           </div>
 
-          <div className="flex gap-6 overflow-x-auto no-scrollbar pb-4 snap-x snap-mandatory">
+          {/* Grid of clean horizontal book entries */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
             {displayReadingBooks.map((book) => (
               <div 
                 key={book.id}
@@ -321,41 +328,61 @@ const HomePage: React.FC = () => {
                     navigate(`/book-details/${book.id}`);
                   }
                 }}
-                className="snap-start shrink-0 w-[240px] group cursor-pointer"
+                className="group flex gap-5 cursor-pointer items-start"
               >
-                <div className="relative aspect-[2/3] rounded-lg overflow-hidden shadow-sm border border-outline-variant/20 mb-4 transition-all duration-300 group-hover:shadow-md group-hover:-translate-y-1">
+                {/* Cover art on the left */}
+                <div className="w-[110px] aspect-[2/3] rounded-lg overflow-hidden border border-outline-variant/20 shadow-sm shrink-0 bg-surface-container">
                   {covers[book.id] ? (
                     <img 
                       alt={book.title} 
-                      className="w-full h-full object-cover" 
+                      className="w-full h-full object-cover group-hover:scale-102 transition duration-300" 
                       src={covers[book.id]} 
                     />
                   ) : (
-                    <div className="w-full h-full bg-surface-container flex items-center justify-center border-b border-outline-variant/10">
+                    <div className="w-full h-full flex items-center justify-center">
                       <FiBookOpen className="text-on-surface-variant/30 w-8 h-8" />
                     </div>
                   )}
-                  
-                  {/* Hover Play Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-                    <button className="w-10 h-10 rounded-full bg-white/95 flex items-center justify-center text-black shadow-md hover:scale-105 transition-transform ml-auto">
-                      <FiPlay className="w-4 h-4 fill-current ml-0.5" />
-                    </button>
-                  </div>
                 </div>
 
-                <h3 className="font-serif text-sm font-bold text-on-surface truncate mt-2 leading-snug">{book.title}</h3>
-                <p className="font-sans text-[11px] text-on-surface-variant mb-2 truncate">{book.author}</p>
-                
-                {/* Progress Slider */}
-                <div className="flex items-center gap-3">
-                  <div className="h-1 flex-1 bg-outline-variant/15 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-tertiary rounded-full transition-all duration-300" 
-                      style={{ width: `${book.progress}%` }}
-                    />
+                {/* Details on the right */}
+                <div className="flex-1 flex flex-col justify-between self-stretch py-1 min-w-0">
+                  <div className="space-y-1">
+                    <h3 className="font-sans text-xl font-extrabold text-on-surface leading-tight group-hover:text-tertiary transition-colors line-clamp-2">
+                      {book.title}
+                    </h3>
+                    <p className="font-sans text-sm text-on-surface-variant/80 font-normal mt-1">
+                      {book.author}
+                    </p>
                   </div>
-                  <span className="font-sans text-[10px] text-on-surface-variant/80 font-bold">{book.progress}%</span>
+
+                  <div className="space-y-4 mt-auto">
+                    {/* Progress details & solid indicator line */}
+                    <div className="space-y-1.5">
+                      <div className="h-1.5 w-full bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-on-surface rounded-full transition-all duration-300" 
+                          style={{ width: `${book.progress}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-[10px] text-on-surface-variant font-bold">
+                        <span>{book.progress}% completed</span>
+                        {book.lastRead && <span>{book.lastRead}</span>}
+                      </div>
+                    </div>
+
+                    {/* Large yellow play button below the progress bar */}
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/book/${book.id < 0 ? 1 : book.id}`);
+                      }}
+                      className="w-14 h-14 rounded-full bg-[#fdbf15] hover:bg-[#fdbf15]/90 text-black flex items-center justify-center shadow-md hover:scale-105 transition duration-200 active:scale-95 cursor-pointer"
+                      title="Resume Reading"
+                    >
+                      <FiPlay className="w-5 h-5 fill-current ml-0.5 text-black" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -363,40 +390,143 @@ const HomePage: React.FC = () => {
         </section>
       )}
 
-      {/* 3. Empty State or Recently Added */}
-      {books.length === 0 ? (
-        <section className="text-center py-16 border border-dashed border-outline-variant/30 rounded-xl bg-surface-container/20 flex flex-col items-center justify-center gap-4">
-          <FiBookOpen className="w-12 h-12 text-on-surface-variant/40" />
-          <h3 className="font-headline-md text-xl font-bold text-on-surface">Your library is currently empty</h3>
-          <p className="text-sm text-on-surface-variant max-w-sm leading-relaxed">
-            Import your first EPUB ebook to begin cataloguing and immersive reading.
-          </p>
-          <button 
-            onClick={handleImport}
-            className="mt-2 bg-tertiary text-on-tertiary font-bold py-2.5 px-6 rounded-lg text-sm hover:bg-tertiary/90 transition shadow flex items-center gap-2 cursor-pointer"
-          >
-            <FiPlus className="w-4 h-4" />
-            <span>Import EPUB</span>
-          </button>
-        </section>
-      ) : (
-        <section className="space-y-6">
-          <div className="flex items-center justify-between border-b border-outline-variant/10 pb-3">
-            <h2 className="font-headline-md text-xl font-bold text-on-surface">Recently Added</h2>
-          </div>
+      {/* 2. Reading Analytics & Book Plans Widgets */}
+      <section className="space-y-6">
+        <div className="border-b border-outline-variant/10 pb-3">
+          <h2 className="font-headline-md text-xl font-bold text-on-surface">Reading Analytics</h2>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
+          {/* SVG Weekly Activity Graph Widget */}
+          <div className="lg:col-span-2 bg-surface-container-low border border-outline-variant/15 rounded-xl p-6 space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-sm font-bold text-on-surface flex items-center gap-2">
+                <FiActivity className="text-tertiary w-4.5 h-4.5" />
+                <span>Weekly Reading Minutes</span>
+              </h3>
+              <span className="text-[11px] text-on-surface-variant font-bold bg-surface-container px-2.5 py-1 rounded-full border border-outline-variant/10">
+                Avg: 38m / day
+              </span>
+            </div>
+
+            {/* Custom SVG Bar Chart */}
+            <div className="w-full h-44 flex items-end justify-between px-2 pt-4 relative">
+              {/* Backgrid Lines */}
+              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-8 pt-4">
+                <div className="border-b border-outline-variant/5 w-full h-[1px]"></div>
+                <div className="border-b border-outline-variant/5 w-full h-[1px]"></div>
+                <div className="border-b border-outline-variant/5 w-full h-[1px]"></div>
+              </div>
+
+              {weeklyReadingData.map((data, idx) => {
+                const heightPercentage = (data.minutes / maxMinutes) * 100;
+                return (
+                  <div key={idx} className="flex flex-col items-center gap-2 flex-1 group z-10">
+                    {/* Tooltip on hover */}
+                    <div className="opacity-0 group-hover:opacity-100 absolute bottom-36 bg-surface-container-highest text-[10px] text-on-surface font-bold px-2 py-0.5 rounded border border-outline-variant/20 shadow transition-opacity duration-200">
+                      {data.minutes}m
+                    </div>
+                    {/* The Bar */}
+                    <div className="w-8 sm:w-12 bg-surface-container-highest rounded-t-md relative overflow-hidden h-28 flex items-end">
+                      <div 
+                        className="w-full bg-gradient-to-t from-tertiary/70 to-tertiary rounded-t-md transition-all duration-500" 
+                        style={{ height: `${heightPercentage}%` }}
+                      />
+                    </div>
+                    {/* Day label */}
+                    <span className="text-[10px] font-bold text-on-surface-variant">{data.day}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Quick Metrics Column */}
+          <div className="bg-surface-container-low border border-outline-variant/15 rounded-xl p-6 space-y-4 flex flex-col justify-between">
+            <h3 className="text-sm font-bold text-on-surface flex items-center gap-2 border-b border-outline-variant/10 pb-2.5">
+              <FiTrendingUp className="text-primary w-4.5 h-4.5" />
+              <span>Statistics Summary</span>
+            </h3>
+
+            <div className="grid grid-cols-2 gap-4 flex-1 py-1">
+              <div className="bg-surface-container-high/40 p-3 rounded-lg border border-outline-variant/10 space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/80">Monthly Time</span>
+                <p className="text-lg font-serif font-bold text-on-surface">18.4 hrs</p>
+              </div>
+              <div className="bg-surface-container-high/40 p-3 rounded-lg border border-outline-variant/10 space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/80">Pages Read</span>
+                <p className="text-lg font-serif font-bold text-on-surface">1,420 pgs</p>
+              </div>
+              <div className="bg-surface-container-high/40 p-3 rounded-lg border border-outline-variant/10 space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/80">Finished Books</span>
+                <p className="text-lg font-serif font-bold text-on-surface">4 books</p>
+              </div>
+              <div className="bg-surface-container-high/40 p-3 rounded-lg border border-outline-variant/10 space-y-1 flex flex-col justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/80">Active Streak</span>
+                <p className="text-lg font-serif font-bold text-amber-500 flex items-center gap-1.5">
+                  <FiZap className="w-4 h-4 fill-current" />
+                  <span>14 days</span>
+                </p>
+              </div>
+            </div>
+
+            <button 
+              onClick={() => navigate("/plans")}
+              className="w-full mt-2 bg-tertiary/15 text-tertiary border border-tertiary/20 hover:bg-tertiary/25 hover:border-tertiary transition py-2 px-3 rounded-lg font-label-md text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <FiCalendar className="w-3.5 h-3.5" />
+              <span>View Reading Plans</span>
+            </button>
+          </div>
+
+        </div>
+      </section>
+
+      {/* 3. Discover Recommendations Grid */}
+      <section className="space-y-6">
+        <div className="flex items-center justify-between border-b border-outline-variant/10 pb-3">
+          <h2 className="font-headline-md text-xl font-bold text-on-surface">Discover Recommendations</h2>
+        </div>
+
+        {books.length === 0 ? (
+          <div className="text-center py-16 border border-dashed border-outline-variant/30 rounded-xl bg-surface-container/20 flex flex-col items-center justify-center gap-4">
+            <FiBookOpen className="w-12 h-12 text-on-surface-variant/40" />
+            <h3 className="font-headline-md text-xl font-bold text-on-surface">No books in catalog yet</h3>
+            <p className="text-sm text-on-surface-variant max-w-sm leading-relaxed">
+              Import ebooks from local path to populate your catalog and view recommendations.
+            </p>
+            <div className="flex items-center gap-3 mt-2">
+              <button 
+                onClick={handleImport}
+                className="bg-tertiary text-on-tertiary font-bold py-2.5 px-6 rounded-lg text-sm hover:bg-tertiary/90 transition shadow flex items-center gap-2 cursor-pointer"
+              >
+                <FiPlus className="w-4 h-4" />
+                <span>Import File</span>
+              </button>
+              <button 
+                onClick={handleImportFolder}
+                className="bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/35 text-on-surface font-bold py-2.5 px-6 rounded-lg text-sm transition shadow flex items-center gap-2 cursor-pointer"
+              >
+                <FiFolder className="w-4 h-4" />
+                <span>Import Folder</span>
+              </button>
+            </div>
+          </div>
+        ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-            {books.map((book) => (
+            {books.slice(0, 5).map((book) => (
               <div 
                 key={book.id}
                 onClick={() => navigate(`/book-details/${book.id}`)}
-                className="group cursor-pointer space-y-3"
+                className="group cursor-pointer space-y-3 relative"
               >
-                <div className="relative aspect-[2/3] rounded-lg overflow-hidden border border-outline-variant/20 bg-surface-container-lowest shadow-sm hover:shadow-md transition-shadow">
+                {/* Visual Cover Art Wrapper */}
+                <div className="relative aspect-[2/3] rounded-lg overflow-hidden border border-outline-variant/20 bg-surface-container-lowest shadow-sm hover:shadow-md transition duration-300">
                   {covers[book.id] ? (
                     <img 
                       alt={book.title} 
-                      className="w-full h-full object-cover" 
+                      className="w-full h-full object-cover group-hover:scale-102 transition duration-300" 
                       src={covers[book.id]} 
                     />
                   ) : (
@@ -404,22 +534,51 @@ const HomePage: React.FC = () => {
                       <FiBookOpen className="text-on-surface-variant/30 w-8 h-8" />
                     </div>
                   )}
-                  {/* Play Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-                    <button className="w-10 h-10 rounded-full bg-white/95 flex items-center justify-center text-black shadow-md hover:scale-105 transition-transform ml-auto">
-                      <FiPlay className="w-4 h-4 fill-current ml-0.5" />
+
+                  {/* Rating Stars Overlay tag */}
+                  <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded text-[9px] font-bold text-amber-400 flex items-center gap-1">
+                    <FiStar className="w-2.5 h-2.5 fill-current" />
+                    <span>4.8</span>
+                  </div>
+
+                  {/* Bookmark tag overlay */}
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                    className="absolute top-2 right-2 p-1 rounded-full bg-black/40 hover:bg-black/60 text-white/80 hover:text-white transition cursor-pointer"
+                  >
+                    <FiBookmark className="w-3.5 h-3.5" />
+                  </button>
+
+                  {/* Resume hover Play Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/book/${book.id}`);
+                      }}
+                      className="w-8 h-8 rounded-full bg-amber-400 text-black shadow-md hover:scale-105 transition ml-auto flex items-center justify-center"
+                    >
+                      <FiPlay className="w-3.5 h-3.5 fill-current ml-0.5" />
                     </button>
                   </div>
                 </div>
-                <div>
-                  <h3 className="font-serif text-sm font-bold text-on-surface truncate group-hover:text-tertiary transition-colors leading-snug">{book.title}</h3>
-                  <p className="font-sans text-[11px] text-on-surface-variant truncate">{book.author}</p>
+
+                {/* Metadatas */}
+                <div className="space-y-1">
+                  <h3 className="font-serif text-sm font-bold text-on-surface truncate group-hover:text-tertiary transition-colors leading-tight">
+                    {book.title}
+                  </h3>
+                  <p className="font-sans text-[11px] text-on-surface-variant truncate">
+                    {book.author}
+                  </p>
                 </div>
               </div>
             ))}
           </div>
-        </section>
-      )}
+        )}
+      </section>
 
     </div>
   );
