@@ -1,58 +1,317 @@
-@import url("https://fonts.googleapis.com/css2?family=Roboto&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap");
 
-:root {
-  /* === 1. BACKGROUNDS (Make these OPAQUE) === */
-  /* Main app background */
-  --color-bg: #130f1a;
-  
-  /* Cards like "Last Read" and "Dropdowns" - THIS WAS MISSING */
-  --color-surface: #1e1b2e; 
-  
-  /* Sidebar specific color */
-  --color-sidebar: rgba(49, 40, 61, 0.95); 
-  
-  /* Header specific color */
-  --color-header: rgba(26, 20, 34, 0.95);
+/* ==========================================================================
+   THEME VARIABLES
+   ========================================================================== */
 
-  /* === 2. ACCENTS === */
-  --color-primary: #fb923c;     /* Orange (Highlights) */
-  --color-secondary: #B000FF;   /* Violet (Glows) */
-  --color-tertiary: #3b82f6;    /* Blue */
-  --color-glow: #FF6B00;        /* Deep Orange Glow */
+/* Theme 1: Scholarly Minimalist Dark (Default & Fallback) */
+:root, .theme-scholarly-dark {
+  --theme-name: "Scholarly Dark";
   
-  /* === 3. TEXT === */
-  --color-text: #ffffff;
-  --color-text-dim: #9ca3af;    /* Gray-400 */
+  /* Background & Surfaces */
+  --color-bg: #131411;
+  --color-surface: #131411;
+  --color-surface-container: #20201d;
+  --color-surface-container-low: #1c1c19;
+  --color-surface-container-high: #2a2a27;
+  --color-surface-container-highest: #353532;
+  --color-surface-container-lowest: #0e0e0c;
   
-  /* === 4. GLASS & BORDERS === */
-  /* Used for buttons and search bars */
-  --color-glass: rgba(30, 27, 46, 0.60);
-  --color-border: rgba(255, 255, 255, 0.1);
-  
-  /* === 5. SHADOWS === */
-  --shadow-glow: 0 0 20px rgba(176, 0, 255, 0.15);
+  /* On-Surfaces */
+  --color-on-surface: #e5e2dd;
+  --color-on-surface-variant: #c5c6ca;
+  --color-text: #e5e2dd;
+  --color-text-dim: #c5c6ca;
 
-  /* === 6. FONTS === */
-  --font-roboto: "Roboto", sans-serif;
+  /* Accents & Outlines */
+  --color-primary: #c6c6c9;
+  --color-secondary: #e3beb8;
+  --color-tertiary: #ffb783;      /* Amber / Orange accent */
+  --color-outline-variant: #44474a;
+  --color-border: rgba(229, 226, 221, 0.1);
+  --color-glass: rgba(42, 42, 39, 0.4);
+  --shadow-glow: 0 4px 20px rgba(255, 183, 131, 0.15);
 }
 
-/* GLOBAL RESET */
+/* Theme 2: Scholarly Minimalist Sepia (Warm Paper) */
+.theme-scholarly-sepia {
+  --theme-name: "Scholarly Sepia";
+
+  /* Background & Surfaces */
+  --color-bg: #f4ecd8;
+  --color-surface: #f4ecd8;
+  --color-surface-container: #e9dfc6;
+  --color-surface-container-low: #eedfb8;
+  --color-surface-container-high: #e3d4b6;
+  --color-surface-container-highest: #dacba8;
+  --color-surface-container-lowest: #fdfaf2;
+  
+  /* On-Surfaces */
+  --color-on-surface: #433422;
+  --color-on-surface-variant: #6c5d4d;
+  --color-text: #433422;
+  --color-text-dim: #6c5d4d;
+
+  /* Accents & Outlines */
+  --color-primary: #7d5a3e;      /* Leather Brown */
+  --color-secondary: #9e7b5f;
+  --color-tertiary: #d4a373;     /* Warm Amber */
+  --color-outline-variant: #d5c7a9;
+  --color-border: rgba(67, 52, 34, 0.12);
+  --color-glass: rgba(244, 236, 216, 0.8);
+  --shadow-glow: 0 4px 20px rgba(125, 90, 62, 0.05);
+}
+
+/* Theme 3: Scholarly Minimalist Light */
+.theme-scholarly-light {
+  --theme-name: "Scholarly Light";
+
+  /* Background & Surfaces */
+  --color-bg: #f9f9f9;
+  --color-surface: #f9f9f9;
+  --color-surface-container: #eeeeee;
+  --color-surface-container-low: #f3f3f4;
+  --color-surface-container-high: #e8e8e8;
+  --color-surface-container-highest: #e2e2e2;
+  --color-surface-container-lowest: #ffffff;
+  
+  /* On-Surfaces */
+  --color-on-surface: #1a1c1c;
+  --color-on-surface-variant: #45474b;
+  --color-text: #1a1c1c;
+  --color-text-dim: #45474b;
+
+  /* Accents & Outlines */
+  --color-primary: #02040a;
+  --color-secondary: #5e5e5b;
+  --color-tertiary: #d4a373;      /* Amber Accent */
+  --color-outline-variant: #c6c6cb;
+  --color-border: rgba(0, 0, 0, 0.08);
+  --color-glass: rgba(255, 255, 255, 0.8);
+  --shadow-glow: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+
+/* ==========================================================================
+   GLOBAL RESET & STYLING
+   ========================================================================== */
 body {
   background-color: var(--color-bg);
   color: var(--color-text);
-  font-family: var(--font-roboto);
+  font-family: 'Inter', sans-serif;
   margin: 0;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  overflow: hidden;
+}
+
+/* Custom transitions for themed components */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.1s ease;
 }
 
 /* SCROLLBARS */
-.custom-scrollbar { scrollbar-width: thin; scrollbar-color: var(--color-secondary) var(--color-bg); }
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: var(--color-bg); border-radius: 10px; }
-::-webkit-scrollbar-thumb { background-color: var(--color-secondary); border-radius: 10px; border: 2px solid var(--color-bg); }
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-primary) var(--color-bg);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-primary);
+  border-radius: 10px;
+  border: 1px solid var(--color-bg);
+}
 
 /* ANIMATIONS */
 @keyframes popIn {
-  0% { opacity: 0; transform: scale(0.95) translateY(10px); }
+  0% { opacity: 0; transform: scale(0.97) translateY(8px); }
   100% { opacity: 1; transform: scale(1) translateY(0); }
 }
-.animate-pop-in { animation: popIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-pop-in {
+  animation: popIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideInFromLeft {
+  0% { opacity: 0; transform: translateX(-12px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-in-left {
+  opacity: 0;
+  animation: slideInFromLeft 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideInFromRight {
+  0% { opacity: 0; transform: translateX(12px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-in-right {
+  opacity: 0;
+  animation: slideInFromRight 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Premium Bookmark card styling */
+.bookmark-card {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  position: relative;
+  overflow: hidden;
+}
+.bookmark-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(255, 183, 131, 0.08) 0%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.bookmark-card:hover {
+  transform: scale(1.02) translateY(-1px);
+  border-color: rgba(255, 183, 131, 0.25) !important;
+  box-shadow: 0 4px 12px rgba(255, 183, 131, 0.05), inset 0 0 0 1px rgba(255, 183, 131, 0.1);
+  background-color: var(--color-surface-container-high) !important;
+}
+.bookmark-card:hover::before {
+  opacity: 1;
+}
+.bookmark-card:active {
+  transform: scale(0.99) translateY(0);
+}
+
+/* Foolproof scrollbar hider overrides to prevent WebView2/Windows scrollbar lines */
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.no-scrollbar::-webkit-scrollbar-track {
+  background: transparent !important;
+  display: none !important;
+}
+.no-scrollbar::-webkit-scrollbar-thumb {
+  background: transparent !important;
+  display: none !important;
+}
+.no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+/* Premium paginated book reader layout columns */
+.paginated-reader-content {
+  height: 75vh;
+  width: auto;
+  max-width: none;
+  column-gap: 4rem;
+  column-fill: auto;
+  column-width: 80vw; /* mobile default */
+}
+
+@media (min-width: 768px) {
+  .paginated-reader-content {
+    column-width: 38vw; /* Fits exactly 2 columns + gaps with beautiful margins */
+  }
+}
+
+/* Page Spacing and Layout Margins */
+.p-margin-desktop {
+  padding: 1.5rem;
+}
+.px-margin-desktop {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .p-margin-desktop {
+    padding: 2.5rem;
+  }
+  .px-margin-desktop {
+    padding-left: 2.5rem;
+    padding-right: 2.5rem;
+  }
+}
+
+@media (min-width: 1440px) {
+  .p-margin-desktop {
+    padding: 3.5rem;
+  }
+  .px-margin-desktop {
+    padding-left: 3.5rem;
+    padding-right: 3.5rem;
+  }
+}
+
+/* Strip hardcoded EPUB styles clashing with theme background */
+.epub-rendered-content,
+.epub-rendered-content * {
+  background-color: transparent !important;
+  background: transparent !important;
+  color: inherit !important;
+}
+
+/* Custom fade-in and pop-in animations for modals without Tailwind */
+@keyframes fadeInBackdrop {
+  from { opacity: 0; backdrop-filter: blur(0px); -webkit-backdrop-filter: blur(0px); }
+  to { opacity: 1; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+}
+.animate-fade-in-backdrop {
+  animation: fadeInBackdrop 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes zoomInModal {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+.animate-zoom-in-modal {
+  animation: zoomInModal 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Sidebar slide animations */
+@keyframes slideFromLeft {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+.animate-slide-from-left {
+  animation: slideFromLeft 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideFromRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+.animate-slide-from-right {
+  animation: slideFromRight 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Premium Reader Hover Components Transitions */
+.reader-drawer-left,
+.reader-drawer-right {
+  will-change: translate, opacity;
+  transition:
+    translate 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+    backdrop-filter 0.3s ease !important;
+}
+
+.reader-header-bar {
+  will-change: translate, opacity;
+  transition:
+    translate 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    backdrop-filter 0.3s ease !important;
+}
