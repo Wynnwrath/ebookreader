@@ -13,38 +13,12 @@ import {
   FiCompass,
   FiEdit3
 } from "react-icons/fi";
-import { invoke } from "@tauri-apps/api/core";
 import Button from "../components/ui/Button";
+import { tauriService } from "../services/tauriService";
+import { Collection, Book, TauriBook, ProgressItem } from "../types";
 
 interface OutletContextType {
   userId: number | null;
-}
-
-interface Collection {
-  id: string;
-  name: string;
-  description: string;
-  accentColor: string;
-  bookIds: number[];
-}
-
-interface Book {
-  id: number;
-  title: string;
-  author: string;
-  progress: number;
-}
-
-interface TauriBook {
-  id: number;
-  title: string;
-  author?: string;
-}
-
-interface ProgressItem {
-  book_id: number;
-  progress_percentage: number;
-  last_read_at: string | null;
 }
 
 const ACCENT_COLORS = [
@@ -124,11 +98,11 @@ const CollectionsPage: React.FC = () => {
 
   const loadData = async () => {
     try {
-      const allBooks = await invoke<TauriBook[]>("list_books");
+      const allBooks = await tauriService.listBooks();
       
       const progressPromises = allBooks.map(async (b) => {
         try {
-          const p = await invoke<ProgressItem | null>("get_reading_progress", { bookId: b.id });
+          const p = await tauriService.getReadingProgress<ProgressItem | null>({ bookId: b.id });
           return p;
         } catch {
           return null;
@@ -158,7 +132,7 @@ const CollectionsPage: React.FC = () => {
       const newCovers: Record<number, string> = {};
       for (const book of allBooks) {
         try {
-          const coverBytes = await invoke<number[]>("get_cover_img", { bookId: book.id });
+          const coverBytes = await tauriService.getCoverImg(book.id);
           if (coverBytes && coverBytes.length > 0) {
             const blob = new Blob([new Uint8Array(coverBytes)], { type: "image/jpeg" });
             newCovers[book.id] = URL.createObjectURL(blob);

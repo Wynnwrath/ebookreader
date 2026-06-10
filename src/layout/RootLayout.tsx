@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
-import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import SettingsModal from "../components/SettingsModal";
+import { tauriService } from "../services/tauriService";
+import { TauriBook as SearchBook } from "../types";
 import { 
   FiHome, 
   FiBookOpen, 
@@ -29,12 +30,6 @@ import {
 
 export interface RootLayoutProps {
   userId?: number | null;
-}
-
-interface SearchBook {
-  id: number;
-  title: string;
-  author: string;
 }
 
 const RootLayout: React.FC<RootLayoutProps> = ({ userId }) => {
@@ -97,7 +92,7 @@ const RootLayout: React.FC<RootLayoutProps> = ({ userId }) => {
   const handleConfirmImport = async () => {
     if (!selectedFile) return;
     try {
-      await invoke("import_book", { path: selectedFile.path });
+      await tauriService.importBook(selectedFile.path);
       
       const newImport = { 
         name: selectedFile.name, 
@@ -130,15 +125,15 @@ const RootLayout: React.FC<RootLayoutProps> = ({ userId }) => {
 
   const loadBooksForSearch = async () => {
     try {
-      const list = await invoke<SearchBook[]>("list_books");
-      setSearchBooks(list);
+      const list = await tauriService.listBooks();
+      setSearchBooks(list as any);
 
       // Lazy load cover images for matching books
       const newCovers = { ...searchCovers };
       for (const book of list) {
         if (!newCovers[book.id]) {
           try {
-            const coverBytes = await invoke<number[]>("get_cover_img", { bookId: book.id });
+            const coverBytes = await tauriService.getCoverImg(book.id);
             if (coverBytes && coverBytes.length > 0) {
               const blob = new Blob([new Uint8Array(coverBytes)], { type: "image/jpeg" });
               newCovers[book.id] = URL.createObjectURL(blob);

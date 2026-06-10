@@ -15,36 +15,9 @@ import {
   FiList,
   FiHeart
 } from "react-icons/fi";
-import { invoke } from "@tauri-apps/api/core";
+import { tauriService } from "../services/tauriService";
+import { BookDetails, Chapter, Bookmark, ProgressInfo } from "../types";
 import SettingsModal from "../components/SettingsModal";
-
-interface BookDetails {
-  id: number;
-  title: string;
-  author: string;
-  file_path: string;
-  file_type?: string;
-}
-
-interface Chapter {
-  title: string;
-  id: string;
-  elementTop: number;
-}
-
-interface Bookmark {
-  bookmark_id: number;
-  book_id: number;
-  user_id: number;
-  position: string;
-  chapter_title?: string;
-  page_number?: number;
-}
-
-interface ProgressInfo {
-  current_position?: string | null;
-  progress_percentage?: number;
-}
 
 interface BookOutletContext {
   userId: number | null;
@@ -207,7 +180,11 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
   const loadBook = async () => {
     try {
       setLoading(true);
-      const book = await invoke<BookDetails>("get_book_details", { bookId: Number(id) });
+      const book = await tauriService.getBookDetails(Number(id));
+      if (!book) {
+        console.error("Book details not found");
+        return;
+      }
       setBookDetails(book);
 
       // Check favorite status
@@ -219,7 +196,7 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
 
       // Fetch cover image
       try {
-        const coverBytes = await invoke<number[]>("get_cover_img", { bookId: book.id });
+        const coverBytes = await tauriService.getCoverImg(book.id);
         if (coverBytes && coverBytes.length > 0) {
           const blob = new Blob([new Uint8Array(coverBytes)], { type: "image/jpeg" });
           setCoverUrl(URL.createObjectURL(blob));
@@ -230,7 +207,7 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
 
       if (book.file_type === "pdf") {
         try {
-          const pageCount = await invoke<number>("get_pdf_page_count", { path: book.file_path });
+          const pageCount = await tauriService.getPdfPageCount(book.file_path);
           setTotalPages(pageCount);
 
           const parsedChaps: Chapter[] = [];
@@ -248,7 +225,7 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
           console.error("Failed to load PDF metadata:", err);
         }
       } else {
-        const content = await invoke<string>("read_epub", { path: book.file_path });
+        const content = await tauriService.readEpub(book.file_path);
         
         // Parse content and extract chapters
         const parser = new DOMParser();
@@ -354,8 +331,8 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
 
   const loadProgressAndBookmarks = async (bookId: number) => {
     try {
-      const prog = await invoke<ProgressInfo>("get_reading_progress", { userId, bookId });
-      const bmarks = await invoke<Bookmark[]>("get_bookmarks", { userId, bookId });
+      const prog = await tauriService.getReadingProgress<ProgressInfo>({ userId, bookId });
+      const bmarks = await tauriService.getBookmarks({ userId, bookId });
       setBookmarks(bmarks || []);
 
       if (prog && prog.current_position) {
@@ -423,10 +400,10 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
       if (!bookDetails || bookDetails.file_type !== "pdf") return;
       try {
         setPdfPageLoading(true);
-        const page = await invoke<{ image_data: string }>("read_pdf_page", { 
-          path: bookDetails.file_path, 
-          pageNumber: currentPage - 1 
-        });
+        const page = await tauriService.readPdfPage(
+          bookDetails.file_path, 
+          currentPage - 1 
+        );
         setPdfPageData(page.image_data);
       } catch (err) {
         console.error("Failed to read PDF page:", err);
@@ -448,7 +425,7 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
     debounceTimerRef.current = setTimeout(async () => {
       const progressPercent = totalPages > 1 ? ((currentPage - 1) / (totalPages - 1)) * 100 : 0;
       try {
-        await invoke("update_reading_progress", {
+        await tauriService.updateReadingProgress({
           userId,
           bookId: bookDetails.id,
           currentPosition: String(currentPage),
@@ -500,7 +477,7 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
       const { activeChapter: currentChap, currentPage: currentPg } = stateRef.current;
 
       try {
-        await invoke("update_reading_progress", {
+        await tauriService.updateReadingProgress({
           userId,
           bookId: bookDetails.id,
           currentPosition: positionVal,
@@ -610,9 +587,9 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
       const existing = bookmarks.find(b => parseInt(b.position, 10) === currentPage);
       try {
         if (existing) {
-          await invoke("delete_bookmark", { bookmarkId: existing.bookmark_id });
+          await tauriService.deleteBookmark(existing.bookmark_id);
         } else {
-          await invoke("add_bookmark", {
+          await tauriService.addBookmark({
             userId,
             bookId: bookDetails.id,
             position: String(currentPage),
@@ -620,7 +597,7 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
             pageNumber: currentPage
           });
         }
-        const bmarks = await invoke<Bookmark[]>("get_bookmarks", { userId, bookId: bookDetails.id });
+        const bmarks = await tauriService.getBookmarks({ userId, bookId: bookDetails.id });
         setBookmarks(bmarks || []);
       } catch (e) {
         console.error("Failed to toggle PDF bookmark:", e);
@@ -637,9 +614,9 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
 
     try {
       if (existing) {
-        await invoke("delete_bookmark", { bookmarkId: existing.bookmark_id });
+        await tauriService.deleteBookmark(existing.bookmark_id);
       } else {
-        await invoke("add_bookmark", {
+        await tauriService.addBookmark({
           userId,
           bookId: bookDetails.id,
           position: String(scrollPos),
@@ -647,7 +624,7 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
           pageNumber: currentPage
         });
       }
-      const bmarks = await invoke<Bookmark[]>("get_bookmarks", { userId, bookId: bookDetails.id });
+      const bmarks = await tauriService.getBookmarks({ userId, bookId: bookDetails.id });
       setBookmarks(bmarks || []);
     } catch (e) {
       console.error("Failed to toggle bookmark:", e);

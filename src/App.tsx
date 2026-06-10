@@ -12,12 +12,8 @@ import { HelpPage } from "./pages/InfoPages";
 import ProfilePage from "./pages/ProfilePage";
 import BookDetailPage from "./pages/BookDetailPage";
 import BookPlansPage from "./pages/BookPlansPage";
-import { invoke } from "@tauri-apps/api/core";
-
-interface UserInfo {
-  user_id: number;
-  username: string;
-}
+import { tauriService } from "./services/tauriService";
+import { UserInfo } from "./types";
 
 const App: React.FC = () => {
   const [userId, setUserId] = useState<number | null>(null);
@@ -26,12 +22,12 @@ const App: React.FC = () => {
   useEffect(() => {
     async function initUser() {
       try {
-        await invoke("register", { username: "cruiz", password: "password" }).catch(() => {
+        await tauriService.register("cruiz", "password").catch(() => {
           // Ignore registration errors if user already exists
         });
 
         // Retrieve the registered user's ID
-        const user = await invoke<UserInfo>("get_account_info", { username: "cruiz" });
+        const user = await tauriService.getAccountInfo("cruiz");
         if (user && user.user_id) {
           setUserId(user.user_id);
         } else {

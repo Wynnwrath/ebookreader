@@ -32,6 +32,7 @@
   --color-primary: #c6c6c9;
   --color-secondary: #e3beb8;
   --color-tertiary: #ffb783;      /* Amber / Orange accent */
+  --color-on-tertiary: #0e0e0c;
   --color-outline-variant: #44474a;
   --color-border: rgba(229, 226, 221, 0.1);
   --color-glass: rgba(42, 42, 39, 0.4);
@@ -61,6 +62,7 @@
   --color-primary: #7d5a3e;      /* Leather Brown */
   --color-secondary: #9e7b5f;
   --color-tertiary: #d4a373;     /* Warm Amber */
+  --color-on-tertiary: #433422;
   --color-outline-variant: #d5c7a9;
   --color-border: rgba(67, 52, 34, 0.12);
   --color-glass: rgba(244, 236, 216, 0.8);
@@ -90,6 +92,7 @@
   --color-primary: #02040a;
   --color-secondary: #5e5e5b;
   --color-tertiary: #d4a373;      /* Amber Accent */
+  --color-on-tertiary: #1a1c1c;
   --color-outline-variant: #c6c6cb;
   --color-border: rgba(0, 0, 0, 0.08);
   --color-glass: rgba(255, 255, 255, 0.8);

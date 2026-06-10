@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
-import { invoke } from "@tauri-apps/api/core";
 import { open, message } from "@tauri-apps/plugin-dialog";
 import { 
   FiPlay, 
@@ -17,46 +16,12 @@ import {
   FiBookmark,
   FiFolder
 } from "react-icons/fi";
+import { tauriService } from "../services/tauriService";
+import { TauriBook, ProgressItem, Book, Annotation, ExtendedAnnotation } from "../types";
 
 interface OutletContextType {
   userId: number | null;
   importTrigger: number;
-}
-
-interface TauriBook {
-  id: number;
-  title: string;
-  author?: string;
-}
-
-interface ProgressItem {
-  book_id: number;
-  progress_percentage: number;
-  last_read_at: string | null;
-}
-
-interface Book {
-  id: number;
-  title: string;
-  author: string;
-  progress: number;
-  lastReadAt: string | null;
-  lastRead: string;
-}
-
-interface Annotation {
-  id: number;
-  book_id: number;
-  chapter_title?: string;
-  highlighted_text?: string;
-  note?: string;
-  color?: string;
-  created_at?: string;
-}
-
-interface ExtendedAnnotation extends Annotation {
-  bookTitle: string;
-  bookAuthor: string;
 }
 
 const HomePage: React.FC = () => {
@@ -91,11 +56,11 @@ const HomePage: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const allBooks = await invoke<TauriBook[]>("list_books");
+      const allBooks = await tauriService.listBooks();
       
       const progressPromises = allBooks.map(async (b) => {
         try {
-          const p = await invoke<ProgressItem | null>("get_reading_progress", { bookId: b.id });
+          const p = await tauriService.getReadingProgress<ProgressItem | null>({ bookId: b.id });
           return p;
         } catch {
           return null;
@@ -142,7 +107,7 @@ const HomePage: React.FC = () => {
       const newCovers: Record<number, string> = {};
       for (const book of allBooks) {
         try {
-          const coverBytes = await invoke<number[]>("get_cover_img", { bookId: book.id });
+          const coverBytes = await tauriService.getCoverImg(book.id);
           if (coverBytes && coverBytes.length > 0) {
             const blob = new Blob([new Uint8Array(coverBytes)], { type: "image/jpeg" });
             newCovers[book.id] = URL.createObjectURL(blob);
@@ -156,7 +121,7 @@ const HomePage: React.FC = () => {
       // Fetch annotations for the top 3 recently active books
       const annotationPromises = sorted.slice(0, 3).map(async (b) => {
         try {
-          const annList = await invoke<Annotation[]>("get_annotations", { bookId: b.id });
+          const annList = await tauriService.getAnnotations({ bookId: b.id });
           return annList.map(ann => ({ ...ann, bookTitle: b.title, bookAuthor: b.author }));
         } catch {
           return [];
@@ -191,7 +156,7 @@ const HomePage: React.FC = () => {
         filters: [{ name: "Ebook / Document", extensions: ["epub", "pdf"] }]
       });
       if (selected && typeof selected === "string") {
-        await invoke("import_book", { path: selected });
+        await tauriService.importBook(selected);
         await loadData();
       }
     } catch (err) {
@@ -210,7 +175,7 @@ const HomePage: React.FC = () => {
         directory: true
       });
       if (selected && typeof selected === "string") {
-        const errors = await invoke<string[]>("scan_books_directory", { directoryPath: selected });
+        const errors = await tauriService.scanBooksDirectory(selected);
         await loadData();
         if (errors && errors.length > 0) {
           await message(

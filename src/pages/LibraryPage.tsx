@@ -13,11 +13,12 @@ import {
   FiArrowDown,
   FiTrash2
 } from "react-icons/fi";
-import { invoke } from "@tauri-apps/api/core";
 import { open, message } from "@tauri-apps/plugin-dialog";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
 import BookCard, { Book } from "../components/ui/BookCard";
+import { tauriService } from "../services/tauriService";
+import { TauriBook, ProgressItem } from "../types";
 
 interface LibraryOutletContext {
   searchQuery: string;
@@ -27,18 +28,6 @@ interface LibraryOutletContext {
 
 interface LibraryBook extends Book {
   category: string;
-}
-
-interface TauriBook {
-  id: number;
-  title: string;
-  author?: string;
-}
-
-interface ProgressItem {
-  book_id: number;
-  progress_percentage: number;
-  last_read_at: string | null;
 }
 
 const LibraryPage: React.FC = () => {
@@ -64,11 +53,11 @@ const LibraryPage: React.FC = () => {
   const loadLibrary = async () => {
     try {
       setLoading(true);
-      const allBooks = await invoke<TauriBook[]>("list_books");
+      const allBooks = await tauriService.listBooks();
       
       const progressPromises = allBooks.map(async (b) => {
         try {
-          const p = await invoke<ProgressItem | null>("get_reading_progress", { bookId: b.id });
+          const p = await tauriService.getReadingProgress<ProgressItem | null>({ bookId: b.id });
           return p;
         } catch {
           return null;
@@ -114,7 +103,7 @@ const LibraryPage: React.FC = () => {
       const newCovers: Record<number, string> = {};
       for (const book of allBooks) {
         try {
-          const coverBytes = await invoke<number[]>("get_cover_img", { bookId: book.id });
+          const coverBytes = await tauriService.getCoverImg(book.id);
           if (coverBytes && coverBytes.length > 0) {
             const blob = new Blob([new Uint8Array(coverBytes)], { type: "image/jpeg" });
             newCovers[book.id] = URL.createObjectURL(blob);
@@ -162,7 +151,7 @@ const LibraryPage: React.FC = () => {
         filters: [{ name: "Ebook / Document", extensions: ["epub", "pdf"] }]
       });
       if (selected && typeof selected === "string") {
-        await invoke("import_book", { path: selected });
+        await tauriService.importBook(selected);
         await loadLibrary();
       }
     } catch (err) {
@@ -181,7 +170,7 @@ const LibraryPage: React.FC = () => {
         directory: true
       });
       if (selected && typeof selected === "string") {
-        const errors = await invoke<string[]>("scan_books_directory", { directoryPath: selected });
+        const errors = await tauriService.scanBooksDirectory(selected);
         await loadLibrary();
         if (errors && errors.length > 0) {
           await message(
@@ -203,7 +192,7 @@ const LibraryPage: React.FC = () => {
     e.stopPropagation();
     if (confirm(`Are you sure you want to delete "${title}"?`)) {
       try {
-        await invoke("remove_book", { bookId: id });
+        await tauriService.removeBook(id);
         await loadLibrary();
       } catch (err) {
         console.error("Failed to delete book:", err);

@@ -14,33 +14,10 @@ import {
   FiList,
   FiCheckCircle
 } from "react-icons/fi";
-import { invoke } from "@tauri-apps/api/core";
+import { tauriService } from "../services/tauriService";
+import { BookDetails, Chapter, ReadingProgress } from "../types";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
-
-interface BookDetails {
-  id: number;
-  title: string;
-  author?: string;
-  published_date?: string;
-  publisher?: string;
-  isbn?: string;
-  file_type?: string;
-  file_path: string;
-  added_at?: string;
-}
-
-interface Chapter {
-  title: string;
-  id: string;
-}
-
-interface ReadingProgress {
-  progress_percentage?: number;
-  chapter_title?: string | null;
-  page_number?: number | null;
-  last_read_at?: string | null;
-}
 
 interface DetailOutletContext {
   userId: number | null;
@@ -65,7 +42,7 @@ const BookDetailPage: React.FC = () => {
     if (!id) return;
     try {
       setLoading(true);
-      let details = await invoke<BookDetails | null>("get_book_details", { bookId: Number(id) }).catch(() => null);
+      let details = await tauriService.getBookDetails(Number(id)).catch(() => null);
       if (!details) {
         // Fallback mock book for development/browser testing
         details = {
@@ -80,11 +57,12 @@ const BookDetailPage: React.FC = () => {
           added_at: new Date(Date.now() - 5 * 86400000).toISOString()
         };
       }
-      setBook(details);
+      const bookData = details;
+      setBook(bookData);
 
       // 1. Fetch Cover image
       try {
-        const coverBytes = await invoke<number[]>("get_cover_img", { bookId: details.id });
+        const coverBytes = await tauriService.getCoverImg(bookData.id);
         if (coverBytes && coverBytes.length > 0) {
           const blob = new Blob([new Uint8Array(coverBytes)], { type: "image/jpeg" });
           setCoverUrl(URL.createObjectURL(blob));
@@ -97,14 +75,14 @@ const BookDetailPage: React.FC = () => {
       const savedFavs = localStorage.getItem(`stellaron-favorites-${userId}`);
       if (savedFavs) {
         const favArray: number[] = JSON.parse(savedFavs);
-        setIsFavorite(favArray.includes(details.id));
+        setIsFavorite(favArray.includes(bookData.id));
       }
 
       // 3. Fetch Reading Progress
       try {
-        const prog = await invoke<ReadingProgress | null>("get_reading_progress", { 
+        const prog = await tauriService.getReadingProgress<ReadingProgress | null>({ 
           userId, 
-          bookId: details.id 
+          bookId: bookData.id 
         }).catch(() => null);
         
         if (prog) {
@@ -112,8 +90,8 @@ const BookDetailPage: React.FC = () => {
         } else {
           // Fallback mock progress
           setProgress({
-            progress_percentage: details.id === -2 ? 35 : 68,
-            chapter_title: details.id === -2 ? "Chapter 3" : "Chapter 1: The Caravan in the Woods",
+            progress_percentage: bookData.id === -2 ? 35 : 68,
+            chapter_title: bookData.id === -2 ? "Chapter 3" : "Chapter 1: The Caravan in the Woods",
             page_number: 12,
             last_read_at: new Date().toISOString()
           });
@@ -123,9 +101,9 @@ const BookDetailPage: React.FC = () => {
       }
 
       // 4. Fetch and Parse Chapters/Pages in memory
-      if (details.file_type === "pdf") {
+      if (bookData.file_type === "pdf") {
         try {
-          const pageCount = await invoke<number>("get_pdf_page_count", { path: details.file_path });
+          const pageCount = await tauriService.getPdfPageCount(bookData.file_path);
           const parsedChaps: Chapter[] = [];
           for (let i = 1; i <= pageCount; i++) {
             parsedChaps.push({
@@ -140,7 +118,7 @@ const BookDetailPage: React.FC = () => {
         }
       } else {
         try {
-          const epubHtml = await invoke<string>("read_epub", { path: details.file_path });
+          const epubHtml = await tauriService.readEpub(bookData.file_path);
           const parser = new DOMParser();
           const doc = parser.parseFromString(epubHtml, "text/html");
           const headings = Array.from(doc.querySelectorAll("h1, h2, h3, h4, h5, h6, [class*='chapter'], [id*='chapter']"));
@@ -203,7 +181,7 @@ const BookDetailPage: React.FC = () => {
     if (!book) return;
     if (window.confirm(`Are you sure you want to permanently delete "${book.title}" from your library?`)) {
       try {
-        await invoke("remove_book", { bookId: book.id });
+        await tauriService.removeBook(book.id);
         navigate("/");
       } catch (e) {
         console.error("Failed to delete book:", e);
