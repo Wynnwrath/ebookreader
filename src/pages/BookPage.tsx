@@ -176,6 +176,40 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
     };
   }, [readerLayoutMode, navigatePage]);
 
+  // Mouse wheel navigation for paginated (redesign) mode
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      if (readerLayoutMode !== "redesign") return;
+
+      if (Math.abs(e.deltaY) > 10) {
+        e.preventDefault();
+        if (e.deltaY > 0) {
+          navigatePage("next");
+        } else {
+          navigatePage("prev");
+        }
+      } else if (Math.abs(e.deltaX) > 15) {
+        e.preventDefault();
+        if (e.deltaX > 0) {
+          navigatePage("next");
+        } else {
+          navigatePage("prev");
+        }
+      }
+    };
+
+    const container = readerRef.current;
+    if (container && readerLayoutMode === "redesign") {
+      container.addEventListener("wheel", handleWheel, { passive: false });
+    }
+
+    return () => {
+      if (container) {
+        container.removeEventListener("wheel", handleWheel);
+      }
+    };
+  }, [readerLayoutMode, navigatePage]);
+
   // Load Book details and content
   const loadBook = async () => {
     try {
@@ -889,33 +923,54 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
         onMouseEnter={() => setIsRightHovered(true)}
       />
 
-      {/* Floating Prev/Up Button (Left Vertically Centered) */}
-      <button
-        onClick={() => navigatePage("prev")}
-        disabled={currentPage === 1}
-        className="fixed left-6 top-1/2 -translate-y-1/2 z-50 flex items-center justify-center w-12 h-12 rounded-full bg-surface-container-highest/85 backdrop-blur-md border border-outline-variant/20 shadow-lg text-on-surface hover:text-tertiary disabled:opacity-0 disabled:pointer-events-none hover:scale-105 active:scale-95 transition-all cursor-pointer"
-        title={readerLayoutMode === "redesign" ? "Previous Page" : "Scroll Up"}
-      >
-        {readerLayoutMode === "redesign" ? (
-          <FiChevronLeft className="w-6 h-6" />
-        ) : (
-          <FiChevronUp className="w-6 h-6" />
-        )}
-      </button>
+      {/* Floating Prev/Next Page Buttons (Only in Paginated/Redesign Mode at Screen Edges) */}
+      {readerLayoutMode === "redesign" && (
+        <>
+          <button
+            onClick={() => navigatePage("prev")}
+            disabled={currentPage === 1}
+            className="fixed left-6 top-1/2 -translate-y-1/2 z-50 flex items-center justify-center w-12 h-12 rounded-full bg-surface-container-highest/85 backdrop-blur-md border border-outline-variant/20 shadow-lg text-on-surface hover:text-tertiary disabled:opacity-0 disabled:pointer-events-none hover:scale-105 active:scale-95 transition-all cursor-pointer"
+            title="Previous Page"
+          >
+            <FiChevronLeft className="w-6 h-6" />
+          </button>
 
-      {/* Floating Next/Down Button (Right Vertically Centered) */}
-      <button
-        onClick={() => navigatePage("next")}
-        disabled={currentPage === totalPages}
-        className="fixed right-6 top-1/2 -translate-y-1/2 z-50 flex items-center justify-center w-12 h-12 rounded-full bg-surface-container-highest/85 backdrop-blur-md border border-outline-variant/20 shadow-lg text-on-surface hover:text-tertiary disabled:opacity-0 disabled:pointer-events-none hover:scale-105 active:scale-95 transition-all cursor-pointer"
-        title={readerLayoutMode === "redesign" ? "Next Page" : "Scroll Down"}
-      >
-        {readerLayoutMode === "redesign" ? (
-          <FiChevronRight className="w-6 h-6" />
-        ) : (
-          <FiChevronDown className="w-6 h-6" />
-        )}
-      </button>
+          <button
+            onClick={() => navigatePage("next")}
+            disabled={currentPage === totalPages}
+            className="fixed right-6 top-1/2 -translate-y-1/2 z-50 flex items-center justify-center w-12 h-12 rounded-full bg-surface-container-highest/85 backdrop-blur-md border border-outline-variant/20 shadow-lg text-on-surface hover:text-tertiary disabled:opacity-0 disabled:pointer-events-none hover:scale-105 active:scale-95 transition-all cursor-pointer"
+            title="Next Page"
+          >
+            <FiChevronRight className="w-6 h-6" />
+          </button>
+        </>
+      )}
+
+      {/* Floating Scroll Up/Down Column (Only in Scrollable/Classic Mode next to text) */}
+      {readerLayoutMode === "classic" && (
+        <div className="fixed left-1/2 top-1/2 -translate-y-1/2 pointer-events-none z-50 w-full max-w-3xl -translate-x-1/2 px-6">
+          <div className="relative w-full h-full">
+            <div className="absolute right-2 lg:right-auto lg:left-full lg:ml-6 top-1/2 -translate-y-1/2 flex flex-col gap-3 pointer-events-auto">
+              <button
+                onClick={() => navigatePage("prev")}
+                disabled={currentPage === 1}
+                className="flex items-center justify-center w-11 h-11 rounded-full bg-surface-container-highest/85 backdrop-blur-md border border-outline-variant/20 shadow-lg text-on-surface hover:text-tertiary disabled:opacity-30 disabled:pointer-events-none hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                title="Scroll Up"
+              >
+                <FiChevronUp className="w-5.5 h-5.5" />
+              </button>
+              <button
+                onClick={() => navigatePage("next")}
+                disabled={currentPage === totalPages}
+                className="flex items-center justify-center w-11 h-11 rounded-full bg-surface-container-highest/85 backdrop-blur-md border border-outline-variant/20 shadow-lg text-on-surface hover:text-tertiary disabled:opacity-30 disabled:pointer-events-none hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                title="Scroll Down"
+              >
+                <FiChevronDown className="w-5.5 h-5.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 2. TOP BAR (ALWAYS VISIBLE) */}
       <header 

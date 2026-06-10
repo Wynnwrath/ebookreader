@@ -275,7 +275,7 @@ body {
   height: auto !important;
   object-fit: contain !important;
   display: block !important;
-  margin: 1.5rem auto !important;
+  margin: 1.5rem 0 !important;
   break-inside: avoid !important;
   page-break-inside: avoid !important;
 }
