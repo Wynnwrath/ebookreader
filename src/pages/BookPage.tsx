@@ -1087,7 +1087,7 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
               <style dangerouslySetInnerHTML={{ __html: `
                 p:first-of-type::first-letter {
                   font-size: 4.5rem;
-                  font-family: "Playfair Display", Georgia, serif;
+                  font-family: var(--font-serif);
                   color: var(--color-tertiary);
                   float: left;
                   margin-right: 12px;

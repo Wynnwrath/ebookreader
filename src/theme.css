@@ -4,6 +4,11 @@
    THEME VARIABLES
    ========================================================================== */
 
+:root {
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-serif: "Playfair Display", Georgia, serif;
+}
+
 /* Theme 1: Scholarly Minimalist Dark (Default & Fallback) */
 :root, .theme-scholarly-dark {
   --theme-name: "Scholarly Dark";
@@ -97,7 +102,7 @@
 body {
   background-color: var(--color-bg);
   color: var(--color-text);
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   margin: 0;
   transition: background-color 0.3s ease, color 0.3s ease;
   overflow: hidden;
@@ -326,4 +331,17 @@ body {
     opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
     box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1),
     backdrop-filter 0.3s ease !important;
+}
+
+/* Custom Font Utility Classes to depend on CSS variables */
+.font-sans {
+  font-family: var(--font-sans) !important;
+}
+
+.font-serif {
+  font-family: var(--font-serif) !important;
+}
+
+.font-display {
+  font-family: var(--font-serif) !important;
 }

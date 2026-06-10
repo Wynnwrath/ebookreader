@@ -250,19 +250,8 @@ const CollectionsPage: React.FC = () => {
   const unsortedBooks = getUnsortedBooks();
 
   return (
-    <div className="w-full space-y-12 p-margin-desktop max-w-container-max mx-auto page-transition pb-24">
+    <div className="w-full space-y-8 p-margin-desktop max-w-container-max mx-auto page-transition pb-24">
       
-      {/* Intro Header Section */}
-      <section className="space-y-4">
-        <h1 className="text-3xl font-display-lg font-bold text-on-surface flex items-center gap-3">
-          <FiFolder className="text-tertiary w-8 h-8" />
-          <span>Curated Collections</span>
-        </h1>
-        <p className="font-body-lg text-lg text-on-surface-variant max-w-2xl leading-relaxed">
-          Your personal taxonomy of knowledge. Organize volumes by discipline, sentiment, or narrative thread.
-        </p>
-      </section>
-
       {/* Bento Grid Layout for Collections */}
       <div className="grid grid-cols-12 gap-6 auto-rows-[240px]">
         

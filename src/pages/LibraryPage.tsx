@@ -292,15 +292,9 @@ const LibraryPage: React.FC = () => {
   return (
     <div className="w-full space-y-6 p-margin-desktop max-w-container-max mx-auto page-transition pb-24">
       
-      {/* Top Controls section */}
+      {/* Top Controls section (No page title/description to match native app feel) */}
       <section className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <HeaderIcon className={`${header.iconClass} w-6 h-6`} />
-            <span>{header.title}</span>
-          </h1>
-          <p className="text-xs text-text-dim mt-0.5">{header.subtitle}</p>
-        </div>
+        <div />
 
         <div className="flex items-center gap-3">
           {/* Categories Tab */}
