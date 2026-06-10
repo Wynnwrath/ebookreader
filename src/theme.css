@@ -260,6 +260,18 @@ body {
   color: inherit !important;
 }
 
+/* Constrain images in the reader to prevent overflowing and keep correct aspect ratio */
+.epub-rendered-content img {
+  max-width: 100% !important;
+  max-height: 65vh !important;
+  height: auto !important;
+  object-fit: contain !important;
+  display: block !important;
+  margin: 1.5rem auto !important;
+  break-inside: avoid !important;
+  page-break-inside: avoid !important;
+}
+
 /* Custom fade-in and pop-in animations for modals without Tailwind */
 @keyframes fadeInBackdrop {
   from { opacity: 0; backdrop-filter: blur(0px); -webkit-backdrop-filter: blur(0px); }

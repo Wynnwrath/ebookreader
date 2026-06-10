@@ -8,7 +8,7 @@ import BookPage from "./pages/BookPage";
 import "./App.css";
 import "./theme.css";
 import PlainLayout from "./layout/PlainLayout";
-import { HelpPage, SettingsPage } from "./pages/InfoPages";
+import { HelpPage } from "./pages/InfoPages";
 import ProfilePage from "./pages/ProfilePage";
 import BookDetailPage from "./pages/BookDetailPage";
 import BookPlansPage from "./pages/BookPlansPage";
@@ -73,7 +73,6 @@ const App: React.FC = () => {
 
       {/* App pages inside PlainLayout (full screen info pages) */}
       <Route element={<PlainLayout userId={userId} />}>
-        <Route path="/settings" element={<SettingsPage />} />
         <Route path="/help" element={<HelpPage />} />
       </Route>
     </Routes>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, message } from "@tauri-apps/plugin-dialog";
 import { 
   FiPlay, 
   FiPlus, 
@@ -24,7 +24,7 @@ interface OutletContextType {
 }
 
 interface TauriBook {
-  book_id: number;
+  id: number;
   title: string;
   author?: string;
 }
@@ -69,7 +69,17 @@ const HomePage: React.FC = () => {
     try {
       setLoading(true);
       const allBooks = await invoke<TauriBook[]>("list_books");
-      const allProgress = await invoke<ProgressItem[]>("get_all_reading_progress", { userId });
+      
+      const progressPromises = allBooks.map(async (b) => {
+        try {
+          const p = await invoke<ProgressItem | null>("get_reading_progress", { bookId: b.id });
+          return p;
+        } catch {
+          return null;
+        }
+      });
+      const progressResults = await Promise.all(progressPromises);
+      const allProgress = progressResults.filter((p): p is ProgressItem => p !== null);
 
       const progressMap: Record<number, ProgressItem> = {};
       allProgress.forEach((p) => {
@@ -78,9 +88,9 @@ const HomePage: React.FC = () => {
 
       // Format books list
       const booksWithProgress: Book[] = allBooks.map((b) => {
-        const prog = progressMap[b.book_id];
+        const prog = progressMap[b.id];
         return {
-          id: b.book_id,
+          id: b.id,
           title: b.title,
           author: b.author || "Unknown Author",
           progress: prog ? Math.round(prog.progress_percentage || 0) : 0,
@@ -109,13 +119,13 @@ const HomePage: React.FC = () => {
       const newCovers: Record<number, string> = {};
       for (const book of allBooks) {
         try {
-          const coverBytes = await invoke<number[]>("get_cover_img", { bookId: book.book_id });
+          const coverBytes = await invoke<number[]>("get_cover_img", { bookId: book.id });
           if (coverBytes && coverBytes.length > 0) {
             const blob = new Blob([new Uint8Array(coverBytes)], { type: "image/jpeg" });
-            newCovers[book.book_id] = URL.createObjectURL(blob);
+            newCovers[book.id] = URL.createObjectURL(blob);
           }
         } catch (e) {
-          console.error(`Failed to load cover for book ${book.book_id}:`, e);
+          console.error(`Failed to load cover for book ${book.id}:`, e);
         }
       }
       setCovers(newCovers);
@@ -137,14 +147,18 @@ const HomePage: React.FC = () => {
     try {
       const selected = await open({
         multiple: false,
-        filters: [{ name: "EPUB Ebook", extensions: ["epub"] }]
+        filters: [{ name: "Ebook / Document", extensions: ["epub", "pdf"] }]
       });
       if (selected && typeof selected === "string") {
         await invoke("import_book", { path: selected });
         await loadData();
       }
     } catch (err) {
-      console.error("Failed to import EPUB:", err);
+      console.error("Failed to import book:", err);
+      await message(
+        typeof err === "string" ? err : String(err),
+        { title: "Import Failed", kind: "error" }
+      );
     }
   };
 
@@ -155,11 +169,21 @@ const HomePage: React.FC = () => {
         directory: true
       });
       if (selected && typeof selected === "string") {
-        await invoke("scan_books_directory", { directoryPath: selected });
+        const errors = await invoke<string[]>("scan_books_directory", { directoryPath: selected });
         await loadData();
+        if (errors && errors.length > 0) {
+          await message(
+            `Imported books, but some files failed to import:\n\n${errors.join("\n")}`,
+            { title: "Folder Import Warning", kind: "warning" }
+          );
+        }
       }
     } catch (err) {
       console.error("Failed to import folder:", err);
+      await message(
+        typeof err === "string" ? err : String(err),
+        { title: "Folder Import Failed", kind: "error" }
+      );
     }
   };
 
@@ -331,7 +355,7 @@ const HomePage: React.FC = () => {
                 className="group flex gap-5 cursor-pointer items-start"
               >
                 {/* Cover art on the left */}
-                <div className="w-[110px] aspect-[2/3] rounded-lg overflow-hidden border border-outline-variant/20 shadow-sm shrink-0 bg-surface-container">
+                <div className="w-[140px] sm:w-[150px] aspect-[2/3] rounded-xl overflow-hidden border border-outline-variant/20 shadow-md shrink-0 bg-surface-container">
                   {covers[book.id] ? (
                     <img 
                       alt={book.title} 
@@ -346,7 +370,7 @@ const HomePage: React.FC = () => {
                 </div>
 
                 {/* Details on the right */}
-                <div className="flex-1 flex flex-col justify-between self-stretch py-1 min-w-0">
+                <div className="flex-1 flex flex-col justify-between self-stretch py-2 min-w-0">
                   <div className="space-y-1">
                     <h3 className="font-sans text-xl font-extrabold text-on-surface leading-tight group-hover:text-tertiary transition-colors line-clamp-2">
                       {book.title}

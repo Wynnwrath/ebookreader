@@ -36,7 +36,7 @@ interface Book {
 }
 
 interface TauriBook {
-  book_id: number;
+  id: number;
   title: string;
   author?: string;
 }
@@ -125,7 +125,17 @@ const CollectionsPage: React.FC = () => {
   const loadData = async () => {
     try {
       const allBooks = await invoke<TauriBook[]>("list_books");
-      const allProgress = await invoke<ProgressItem[]>("get_all_reading_progress", { userId });
+      
+      const progressPromises = allBooks.map(async (b) => {
+        try {
+          const p = await invoke<ProgressItem | null>("get_reading_progress", { bookId: b.id });
+          return p;
+        } catch {
+          return null;
+        }
+      });
+      const progressResults = await Promise.all(progressPromises);
+      const allProgress = progressResults.filter((p): p is ProgressItem => p !== null);
 
       const progressMap: Record<number, ProgressItem> = {};
       allProgress.forEach((p) => {
@@ -133,9 +143,9 @@ const CollectionsPage: React.FC = () => {
       });
 
       const formattedBooks: Book[] = allBooks.map((b) => {
-        const prog = progressMap[b.book_id];
+        const prog = progressMap[b.id];
         return {
-          id: b.book_id,
+          id: b.id,
           title: b.title,
           author: b.author || "Unknown Author",
           progress: prog ? Math.round(prog.progress_percentage || 0) : 0,
@@ -148,13 +158,13 @@ const CollectionsPage: React.FC = () => {
       const newCovers: Record<number, string> = {};
       for (const book of allBooks) {
         try {
-          const coverBytes = await invoke<number[]>("get_cover_img", { bookId: book.book_id });
+          const coverBytes = await invoke<number[]>("get_cover_img", { bookId: book.id });
           if (coverBytes && coverBytes.length > 0) {
             const blob = new Blob([new Uint8Array(coverBytes)], { type: "image/jpeg" });
-            newCovers[book.book_id] = URL.createObjectURL(blob);
+            newCovers[book.id] = URL.createObjectURL(blob);
           }
         } catch (e) {
-          console.error(`Failed to load cover for book ${book.book_id}:`, e);
+          console.error(`Failed to load cover for book ${book.id}:`, e);
         }
       }
       setCovers(newCovers);

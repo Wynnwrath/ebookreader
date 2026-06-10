@@ -19,7 +19,7 @@ import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 
 interface BookDetails {
-  book_id: number;
+  id: number;
   title: string;
   author?: string;
   published_date?: string;
@@ -69,7 +69,7 @@ const BookDetailPage: React.FC = () => {
       if (!details) {
         // Fallback mock book for development/browser testing
         details = {
-          book_id: Number(id) || -1,
+          id: Number(id) || -1,
           title: Number(id) === -2 ? "The Great Gatsby" : "Five Fall Into Adventure",
           author: Number(id) === -2 ? "F. Scott Fitzgerald" : "Enid Blyton",
           publisher: "George Newnes Ltd.",
@@ -84,7 +84,7 @@ const BookDetailPage: React.FC = () => {
 
       // 1. Fetch Cover image
       try {
-        const coverBytes = await invoke<number[]>("get_cover_img", { bookId: details.book_id });
+        const coverBytes = await invoke<number[]>("get_cover_img", { bookId: details.id });
         if (coverBytes && coverBytes.length > 0) {
           const blob = new Blob([new Uint8Array(coverBytes)], { type: "image/jpeg" });
           setCoverUrl(URL.createObjectURL(blob));
@@ -97,14 +97,14 @@ const BookDetailPage: React.FC = () => {
       const savedFavs = localStorage.getItem(`stellaron-favorites-${userId}`);
       if (savedFavs) {
         const favArray: number[] = JSON.parse(savedFavs);
-        setIsFavorite(favArray.includes(details.book_id));
+        setIsFavorite(favArray.includes(details.id));
       }
 
       // 3. Fetch Reading Progress
       try {
         const prog = await invoke<ReadingProgress | null>("get_reading_progress", { 
           userId, 
-          bookId: details.book_id 
+          bookId: details.id 
         }).catch(() => null);
         
         if (prog) {
@@ -112,8 +112,8 @@ const BookDetailPage: React.FC = () => {
         } else {
           // Fallback mock progress
           setProgress({
-            progress_percentage: details.book_id === -2 ? 35 : 68,
-            chapter_title: details.book_id === -2 ? "Chapter 3" : "Chapter 1: The Caravan in the Woods",
+            progress_percentage: details.id === -2 ? 35 : 68,
+            chapter_title: details.id === -2 ? "Chapter 3" : "Chapter 1: The Caravan in the Woods",
             page_number: 12,
             last_read_at: new Date().toISOString()
           });
@@ -122,37 +122,54 @@ const BookDetailPage: React.FC = () => {
         console.error("Failed to load reading progress:", e);
       }
 
-      // 4. Fetch and Parse EPUB Chapters in memory
-      try {
-        const epubHtml = await invoke<string>("read_epub", { path: details.file_path });
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(epubHtml, "text/html");
-        const headings = Array.from(doc.querySelectorAll("h1, h2, h3, h4, h5, h6, [class*='chapter'], [id*='chapter']"));
-        const parsedChaps: Chapter[] = headings.map((h, idx) => {
-          if (!h.id) {
-            h.id = `chapter-heading-${idx}`;
+      // 4. Fetch and Parse Chapters/Pages in memory
+      if (details.file_type === "pdf") {
+        try {
+          const pageCount = await invoke<number>("get_pdf_page_count", { path: details.file_path });
+          const parsedChaps: Chapter[] = [];
+          for (let i = 1; i <= pageCount; i++) {
+            parsedChaps.push({
+              title: `Page ${i}`,
+              id: `page-${i}`
+            });
           }
-          return {
-            title: h.textContent?.trim() || `Section ${idx + 1}`,
-            id: h.id
-          };
-        }).filter(c => c.title.length > 0 && c.title.length < 120);
-        
-        if (parsedChaps.length > 0) {
           setChapters(parsedChaps);
-        } else {
-          throw new Error("No headings parsed");
+        } catch (e) {
+          console.warn("Failed to parse PDF page count:", e);
+          setChapters([{ title: "Page 1", id: "page-1" }]);
         }
-      } catch (e) {
-        console.warn("Failed to parse EPUB chapters, using mock chapters:", e);
-        setChapters([
-          { title: "Chapter 1: The Caravan in the Woods", id: "chapter-1" },
-          { title: "Chapter 2: An Unexpected Invitation", id: "chapter-2" },
-          { title: "Chapter 3: Secret Trails", id: "chapter-3" },
-          { title: "Chapter 4: The Discovery at Midnight", id: "chapter-4" },
-          { title: "Chapter 5: Escaping the Trap", id: "chapter-5" },
-          { title: "Chapter 6: Safe Return", id: "chapter-6" }
-        ]);
+      } else {
+        try {
+          const epubHtml = await invoke<string>("read_epub", { path: details.file_path });
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(epubHtml, "text/html");
+          const headings = Array.from(doc.querySelectorAll("h1, h2, h3, h4, h5, h6, [class*='chapter'], [id*='chapter']"));
+          const parsedChaps: Chapter[] = headings.map((h, idx) => {
+            if (!h.id) {
+              h.id = `chapter-heading-${idx}`;
+            }
+            return {
+              title: h.textContent?.trim() || `Section ${idx + 1}`,
+              id: h.id
+            };
+          }).filter(c => c.title.length > 0 && c.title.length < 120);
+          
+          if (parsedChaps.length > 0) {
+            setChapters(parsedChaps);
+          } else {
+            throw new Error("No headings parsed");
+          }
+        } catch (e) {
+          console.warn("Failed to parse EPUB chapters, using mock chapters:", e);
+          setChapters([
+            { title: "Chapter 1: The Caravan in the Woods", id: "chapter-1" },
+            { title: "Chapter 2: An Unexpected Invitation", id: "chapter-2" },
+            { title: "Chapter 3: Secret Trails", id: "chapter-3" },
+            { title: "Chapter 4: The Discovery at Midnight", id: "chapter-4" },
+            { title: "Chapter 5: Escaping the Trap", id: "chapter-5" },
+            { title: "Chapter 6: Safe Return", id: "chapter-6" }
+          ]);
+        }
       }
 
     } catch (err) {
@@ -168,7 +185,7 @@ const BookDetailPage: React.FC = () => {
 
   const toggleFavorite = () => {
     if (!book) return;
-    const bookId = book.book_id;
+    const bookId = book.id;
     const savedFavs = localStorage.getItem(`stellaron-favorites-${userId}`);
     const favSet = savedFavs ? new Set<number>(JSON.parse(savedFavs)) : new Set<number>();
     
@@ -186,7 +203,7 @@ const BookDetailPage: React.FC = () => {
     if (!book) return;
     if (window.confirm(`Are you sure you want to permanently delete "${book.title}" from your library?`)) {
       try {
-        await invoke("remove_book", { bookId: book.book_id });
+        await invoke("remove_book", { bookId: book.id });
         navigate("/");
       } catch (e) {
         console.error("Failed to delete book:", e);
@@ -196,12 +213,12 @@ const BookDetailPage: React.FC = () => {
 
   const handleStartReading = () => {
     if (!book) return;
-    navigate(`/book/${book.book_id}`);
+    navigate(`/book/${book.id}`);
   };
 
   const handleChapterSelect = (chapterId: string) => {
     if (!book) return;
-    navigate(`/book/${book.book_id}`, { state: { jumpToChapterId: chapterId } });
+    navigate(`/book/${book.id}`, { state: { jumpToChapterId: chapterId } });
   };
 
   if (loading) {
