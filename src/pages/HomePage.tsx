@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
-import { invoke } from "@tauri-apps/api/core";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, message } from "@tauri-apps/plugin-dialog";
 import { 
   FiPlay, 
   FiPlus, 
@@ -17,31 +16,12 @@ import {
   FiBookmark,
   FiFolder
 } from "react-icons/fi";
+import { tauriService } from "../services/tauriService";
+import { TauriBook, ProgressItem, Book, Annotation, ExtendedAnnotation } from "../types";
 
 interface OutletContextType {
   userId: number | null;
   importTrigger: number;
-}
-
-interface TauriBook {
-  book_id: number;
-  title: string;
-  author?: string;
-}
-
-interface ProgressItem {
-  book_id: number;
-  progress_percentage: number;
-  last_read_at: string | null;
-}
-
-interface Book {
-  id: number;
-  title: string;
-  author: string;
-  progress: number;
-  lastReadAt: string | null;
-  lastRead: string;
 }
 
 const HomePage: React.FC = () => {
@@ -52,24 +32,42 @@ const HomePage: React.FC = () => {
   const [covers, setCovers] = useState<Record<number, string>>({});
   const [streakDays, setStreakDays] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
+  const [recentAnnotations, setRecentAnnotations] = useState<ExtendedAnnotation[]>([]);
 
-  // Weekly Reading Minutes (mock data for the chart)
-  const weeklyReadingData = [
-    { day: "Mon", minutes: 25 },
-    { day: "Tue", minutes: 40 },
-    { day: "Wed", minutes: 15 },
-    { day: "Thu", minutes: 30 },
-    { day: "Fri", minutes: 50 },
-    { day: "Sat", minutes: 65 },
-    { day: "Sun", minutes: 45 }
+  const literaryQuotes = [
+    { text: "I have always imagined that Paradise will be a kind of library.", author: "Jorge Luis Borges" },
+    { text: "A room without books is like a body without a soul.", author: "Cicero" },
+    { text: "Books are a uniquely portable magic.", author: "Stephen King" },
+    { text: "Reading is a conversation. All books talk. But a good book listens as well.", author: "Mark Haddon" },
+    { text: "Quiet rooms, full of books, are the best places in the world.", author: "Charles Dickens" }
   ];
-  const maxMinutes = Math.max(...weeklyReadingData.map(d => d.minutes));
+
+  const [currentQuote] = useState<{ text: string; author: string }>(
+    () => literaryQuotes[Math.floor(Math.random() * literaryQuotes.length)]
+  );
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
+  };
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const allBooks = await invoke<TauriBook[]>("list_books");
-      const allProgress = await invoke<ProgressItem[]>("get_all_reading_progress", { userId });
+      const allBooks = await tauriService.listBooks();
+      
+      const progressPromises = allBooks.map(async (b) => {
+        try {
+          const p = await tauriService.getReadingProgress<ProgressItem | null>({ bookId: b.id });
+          return p;
+        } catch {
+          return null;
+        }
+      });
+      const progressResults = await Promise.all(progressPromises);
+      const allProgress = progressResults.filter((p): p is ProgressItem => p !== null);
 
       const progressMap: Record<number, ProgressItem> = {};
       allProgress.forEach((p) => {
@@ -78,9 +76,9 @@ const HomePage: React.FC = () => {
 
       // Format books list
       const booksWithProgress: Book[] = allBooks.map((b) => {
-        const prog = progressMap[b.book_id];
+        const prog = progressMap[b.id];
         return {
-          id: b.book_id,
+          id: b.id,
           title: b.title,
           author: b.author || "Unknown Author",
           progress: prog ? Math.round(prog.progress_percentage || 0) : 0,
@@ -109,16 +107,34 @@ const HomePage: React.FC = () => {
       const newCovers: Record<number, string> = {};
       for (const book of allBooks) {
         try {
-          const coverBytes = await invoke<number[]>("get_cover_img", { bookId: book.book_id });
+          const coverBytes = await tauriService.getCoverImg(book.id);
           if (coverBytes && coverBytes.length > 0) {
             const blob = new Blob([new Uint8Array(coverBytes)], { type: "image/jpeg" });
-            newCovers[book.book_id] = URL.createObjectURL(blob);
+            newCovers[book.id] = URL.createObjectURL(blob);
           }
         } catch (e) {
-          console.error(`Failed to load cover for book ${book.book_id}:`, e);
+          console.error(`Failed to load cover for book ${book.id}:`, e);
         }
       }
       setCovers(newCovers);
+
+      // Fetch annotations for the top 3 recently active books
+      const annotationPromises = sorted.slice(0, 3).map(async (b) => {
+        try {
+          const annList = await tauriService.getAnnotations({ bookId: b.id });
+          return annList.map(ann => ({ ...ann, bookTitle: b.title, bookAuthor: b.author }));
+        } catch {
+          return [];
+        }
+      });
+      const annotationLists = await Promise.all(annotationPromises);
+      const allAnnotations = annotationLists.flat();
+      const sortedAnnotations = allAnnotations.sort((a, b) => {
+        const aTime = a.created_at ? new Date(a.created_at.replace(" ", "T")).getTime() : 0;
+        const bTime = b.created_at ? new Date(b.created_at.replace(" ", "T")).getTime() : 0;
+        return bTime - aTime;
+      });
+      setRecentAnnotations(sortedAnnotations.slice(0, 3));
 
     } catch (err) {
       console.error("Failed to load homepage data:", err);
@@ -137,14 +153,18 @@ const HomePage: React.FC = () => {
     try {
       const selected = await open({
         multiple: false,
-        filters: [{ name: "EPUB Ebook", extensions: ["epub"] }]
+        filters: [{ name: "Ebook / Document", extensions: ["epub", "pdf"] }]
       });
       if (selected && typeof selected === "string") {
-        await invoke("import_book", { path: selected });
+        await tauriService.importBook(selected);
         await loadData();
       }
     } catch (err) {
-      console.error("Failed to import EPUB:", err);
+      console.error("Failed to import book:", err);
+      await message(
+        typeof err === "string" ? err : String(err),
+        { title: "Import Failed", kind: "error" }
+      );
     }
   };
 
@@ -155,11 +175,21 @@ const HomePage: React.FC = () => {
         directory: true
       });
       if (selected && typeof selected === "string") {
-        await invoke("scan_books_directory", { directoryPath: selected });
+        const errors = await tauriService.scanBooksDirectory(selected);
         await loadData();
+        if (errors && errors.length > 0) {
+          await message(
+            `Imported books, but some files failed to import:\n\n${errors.join("\n")}`,
+            { title: "Folder Import Warning", kind: "warning" }
+          );
+        }
       }
     } catch (err) {
       console.error("Failed to import folder:", err);
+      await message(
+        typeof err === "string" ? err : String(err),
+        { title: "Folder Import Failed", kind: "error" }
+      );
     }
   };
 
@@ -219,10 +249,10 @@ const HomePage: React.FC = () => {
   let displayReadingBooks = books.filter(b => b.progress > 0 && b.progress < 100);
   if (displayReadingBooks.length === 0) {
     if (books.length > 0) {
-      displayReadingBooks = books.slice(0, 2).map((book, idx) => ({
+      displayReadingBooks = books.slice(0, 3).map((book, idx) => ({
         ...book,
-        progress: idx === 0 ? 68 : 35,
-        lastRead: idx === 0 ? "2h ago" : "Yesterday",
+        progress: idx === 0 ? 68 : idx === 1 ? 35 : 12,
+        lastRead: idx === 0 ? "2h ago" : idx === 1 ? "Yesterday" : "3 days ago",
         lastReadAt: new Date(Date.now() - idx * 86400000).toISOString()
       }));
     } else {
@@ -242,6 +272,14 @@ const HomePage: React.FC = () => {
           progress: 35,
           lastRead: "Yesterday",
           lastReadAt: new Date(Date.now() - 86400000).toISOString()
+        },
+        {
+          id: -3,
+          title: "The Odyssey",
+          author: "Homer",
+          progress: 12,
+          lastRead: "3 days ago",
+          lastReadAt: new Date(Date.now() - 2 * 86400000).toISOString()
         }
       ];
     }
@@ -250,7 +288,7 @@ const HomePage: React.FC = () => {
   if (loading) {
     return (
       <div className="w-full h-[60vh] flex items-center justify-center text-on-surface-variant text-sm font-semibold">
-        Loading dashboard...
+        Loading desk...
       </div>
     );
   }
@@ -261,59 +299,36 @@ const HomePage: React.FC = () => {
       {/* 0. Header Greeting */}
       <section className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-outline-variant/10 pb-6">
         <div>
-          <h1 className="text-3xl font-display-lg font-bold text-on-surface tracking-tight">
-            Welcome back, <span className="text-tertiary">Reader</span>
+          <h1 className="text-3xl font-serif font-bold text-on-surface tracking-tight">
+            {getGreeting()}, <span className="text-tertiary font-display">Reader</span>
           </h1>
-          <p className="font-body-md text-sm text-on-surface-variant mt-1.5">
-            Here's a look at your private archive and reading journey.
+          <p className="font-sans text-sm text-on-surface-variant/80 mt-1.5">
+            Welcome back to your reading desk. You have {books.length} {books.length === 1 ? "book" : "books"} in your private archive.
           </p>
         </div>
         
-        {/* Compact Metrics & Date Badge */}
-        <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
-          {/* Streak Badge */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container border border-outline-variant/15 text-xs font-semibold text-amber-500 shadow-sm animate-pulse-subtle">
-            <FiZap className="w-3.5 h-3.5 fill-current" />
-            <span>{streakDays || 14}d Streak</span>
-          </div>
-
-          {/* In Progress Badge */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container border border-outline-variant/15 text-xs font-semibold text-primary shadow-sm">
-            <FiBookOpen className="w-3.5 h-3.5" />
-            <span>{books.filter(b => b.progress > 0 && b.progress < 100).length || 2} Active</span>
-          </div>
-
-          {/* Library Badge */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container border border-outline-variant/15 text-xs font-semibold text-tertiary shadow-sm">
-            <FiBook className="w-3.5 h-3.5" />
-            <span>{books.length} Books</span>
-          </div>
-
-          {/* Divider */}
-          <div className="w-[1px] h-4 bg-outline-variant/30 hidden sm:block mx-1"></div>
-
-          {/* Date Badge */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-high border border-outline-variant/15 text-xs font-semibold text-on-surface-variant shadow-sm">
-            <span>{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</span>
-          </div>
+        {/* Date Display */}
+        <div className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-surface-container-high/40 border border-outline-variant/15 text-xs font-semibold text-on-surface-variant shadow-sm">
+          <FiCalendar className="w-4 h-4 text-tertiary" />
+          <span>{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</span>
         </div>
       </section>
 
-      {/* 1. Continue Reading / My books (Matching the reference layout precisely) */}
+      {/* 1. Continue Reading / My books */}
       {displayReadingBooks.length > 0 && (
         <section className="space-y-6">
           <div className="flex items-center justify-between border-b border-outline-variant/10 pb-3">
-            <h2 className="font-sans text-2xl font-bold text-on-surface">My books</h2>
+            <h2 className="font-serif text-2xl font-bold text-on-surface">Active Desk</h2>
             <button 
               onClick={() => navigate("/library")}
-              className="font-label-md text-xs text-on-surface-variant hover:text-tertiary transition-colors flex items-center gap-1 font-bold cursor-pointer"
+              className="font-sans text-xs text-on-surface-variant/85 hover:text-tertiary transition-colors flex items-center gap-1 font-bold cursor-pointer"
             >
-              View All <FiChevronRight className="w-4.5 h-4.5" />
+              View Full Catalog <FiChevronRight className="w-4.5 h-4.5" />
             </button>
           </div>
 
           {/* Grid of clean horizontal book entries */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {displayReadingBooks.map((book) => (
               <div 
                 key={book.id}
@@ -328,10 +343,10 @@ const HomePage: React.FC = () => {
                     navigate(`/book-details/${book.id}`);
                   }
                 }}
-                className="group flex gap-5 cursor-pointer items-start"
+                className="group flex gap-5 bg-surface-container-low/30 border border-outline-variant/10 rounded-2xl p-4 hover:bg-surface-container-low/80 hover:border-outline-variant/20 transition-all duration-300 shadow-sm cursor-pointer relative overflow-hidden"
               >
-                {/* Cover art on the left */}
-                <div className="w-[110px] aspect-[2/3] rounded-lg overflow-hidden border border-outline-variant/20 shadow-sm shrink-0 bg-surface-container">
+                {/* Cover art on the left with hover overlay */}
+                <div className="w-[100px] sm:w-[110px] aspect-[2/3] rounded-xl overflow-hidden border border-outline-variant/20 shadow-md shrink-0 bg-surface-container relative">
                   {covers[book.id] ? (
                     <img 
                       alt={book.title} 
@@ -343,45 +358,45 @@ const HomePage: React.FC = () => {
                       <FiBookOpen className="text-on-surface-variant/30 w-8 h-8" />
                     </div>
                   )}
+                  {/* Subtle Play Overlay on Hover */}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-full bg-tertiary text-on-tertiary flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 transition duration-300">
+                      <FiPlay className="w-4 h-4 fill-current ml-0.5" />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Details on the right */}
                 <div className="flex-1 flex flex-col justify-between self-stretch py-1 min-w-0">
                   <div className="space-y-1">
-                    <h3 className="font-sans text-xl font-extrabold text-on-surface leading-tight group-hover:text-tertiary transition-colors line-clamp-2">
+                    <h3 className="font-serif text-lg font-bold text-on-surface leading-tight group-hover:text-tertiary transition-colors line-clamp-2">
                       {book.title}
                     </h3>
-                    <p className="font-sans text-sm text-on-surface-variant/80 font-normal mt-1">
+                    <p className="font-sans text-xs text-on-surface-variant/75 truncate mt-0.5">
                       {book.author}
                     </p>
                   </div>
 
-                  <div className="space-y-4 mt-auto">
+                  <div className="space-y-3 mt-auto">
                     {/* Progress details & solid indicator line */}
-                    <div className="space-y-1.5">
-                      <div className="h-1.5 w-full bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
+                    <div className="space-y-1">
+                      <div className="h-1.5 w-full bg-neutral-200 dark:bg-neutral-800/80 rounded-full overflow-hidden">
                         <div 
-                          className="h-full bg-on-surface rounded-full transition-all duration-300" 
+                          className="h-full bg-tertiary rounded-full transition-all duration-300" 
                           style={{ width: `${book.progress}%` }}
                         />
                       </div>
-                      <div className="flex justify-between text-[10px] text-on-surface-variant font-bold">
-                        <span>{book.progress}% completed</span>
-                        {book.lastRead && <span>{book.lastRead}</span>}
+                      <div className="flex justify-between text-[9px] text-on-surface-variant/70 font-bold tracking-wide">
+                        <span>{book.progress}% COMPLETED</span>
+                        {book.lastRead && <span>{book.lastRead.toUpperCase()}</span>}
                       </div>
                     </div>
 
-                    {/* Large yellow play button below the progress bar */}
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/book/${book.id < 0 ? 1 : book.id}`);
-                      }}
-                      className="w-14 h-14 rounded-full bg-[#fdbf15] hover:bg-[#fdbf15]/90 text-black flex items-center justify-center shadow-md hover:scale-105 transition duration-200 active:scale-95 cursor-pointer"
-                      title="Resume Reading"
-                    >
-                      <FiPlay className="w-5 h-5 fill-current ml-0.5 text-black" />
-                    </button>
+                    {/* Resume Text Link */}
+                    <span className="text-[11px] font-bold text-tertiary flex items-center gap-1.5 group-hover:text-tertiary/90 transition-colors">
+                      <span>Resume Reading</span>
+                      <FiChevronRight className="w-3.5 h-3.5 transform group-hover:translate-x-0.5 transition-transform" />
+                    </span>
                   </div>
                 </div>
               </div>
@@ -390,109 +405,123 @@ const HomePage: React.FC = () => {
         </section>
       )}
 
-      {/* 2. Reading Analytics & Book Plans Widgets */}
-      <section className="space-y-6">
-        <div className="border-b border-outline-variant/10 pb-3">
-          <h2 className="font-headline-md text-xl font-bold text-on-surface">Reading Analytics</h2>
+      {/* 2. Reader's Journal & Reflections */}
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* Left 2 columns: Reader's Notebook (Recent Highlights & Annotations) */}
+        <div className="lg:col-span-2 bg-surface-container-low/50 border border-outline-variant/15 rounded-2xl p-6 space-y-6 flex flex-col justify-between min-h-[300px]">
+          <div className="space-y-2">
+            <h2 className="text-xl font-serif font-bold text-on-surface flex items-center gap-2.5">
+              <FiBookmark className="text-tertiary w-5 h-5" />
+              <span>Reader's Journal</span>
+            </h2>
+            <p className="text-xs text-on-surface-variant/75 font-sans">
+              A curated feed of your latest thoughts, highlighted passages, and bookmarks.
+            </p>
+          </div>
+
+          {recentAnnotations.length > 0 ? (
+            <div className="space-y-4 flex-1 mt-4">
+              {recentAnnotations.map((annotation) => (
+                <div 
+                  key={annotation.id}
+                  onClick={() => navigate(`/book-details/${annotation.book_id}`)}
+                  className="p-4 rounded-xl bg-surface-container/60 border border-outline-variant/10 hover:border-tertiary/30 hover:bg-surface-container transition-all duration-200 cursor-pointer space-y-2"
+                >
+                  <div className="flex justify-between items-center text-[10px] font-sans text-on-surface-variant/60 font-bold">
+                    <span>{annotation.bookTitle} &bull; {annotation.chapter_title || "General"}</span>
+                    <span>{annotation.created_at ? formatLastRead(annotation.created_at) : ""}</span>
+                  </div>
+                  {annotation.highlighted_text && (
+                    <blockquote className="font-serif italic text-sm text-on-surface border-l-2 border-tertiary pl-3 py-0.5 leading-relaxed line-clamp-2">
+                      "{annotation.highlighted_text}"
+                    </blockquote>
+                  )}
+                  {annotation.note && (
+                    <p className="text-xs text-on-surface-variant font-sans bg-surface-container-high/40 p-2 rounded-lg border border-outline-variant/5">
+                      <span className="font-bold text-[10px] uppercase text-tertiary block mb-1">Your Note</span>
+                      {annotation.note}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* Literary Quote Fallback */
+            <div className="flex-1 flex flex-col justify-center items-center text-center p-8 mt-4 rounded-xl border border-dashed border-outline-variant/20 bg-surface-container/10">
+              <blockquote className="font-serif italic text-lg text-on-surface-variant max-w-lg leading-relaxed relative">
+                <span className="absolute -top-6 -left-4 text-5xl text-tertiary/20 font-serif">“</span>
+                {currentQuote.text}
+                <span className="absolute -bottom-10 -right-4 text-5xl text-tertiary/20 font-serif">”</span>
+              </blockquote>
+              <cite className="font-sans text-[11px] font-bold text-tertiary uppercase tracking-widest mt-6 block">
+                — {currentQuote.author}
+              </cite>
+            </div>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* SVG Weekly Activity Graph Widget */}
-          <div className="lg:col-span-2 bg-surface-container-low border border-outline-variant/15 rounded-xl p-6 space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-sm font-bold text-on-surface flex items-center gap-2">
-                <FiActivity className="text-tertiary w-4.5 h-4.5" />
-                <span>Weekly Reading Minutes</span>
-              </h3>
-              <span className="text-[11px] text-on-surface-variant font-bold bg-surface-container px-2.5 py-1 rounded-full border border-outline-variant/10">
-                Avg: 38m / day
-              </span>
-            </div>
+        {/* Right column: Shelf Statistics & Quick Actions (Much cleaner, no graphs) */}
+        <div className="bg-surface-container-low/50 border border-outline-variant/15 rounded-2xl p-6 flex flex-col justify-between min-h-[300px]">
+          <div className="space-y-4">
+            <h2 className="text-sm font-sans font-bold uppercase tracking-wider text-on-surface-variant border-b border-outline-variant/10 pb-3 flex items-center gap-2">
+              <FiTrendingUp className="text-primary w-4 h-4" />
+              <span>Library Overview</span>
+            </h2>
 
-            {/* Custom SVG Bar Chart */}
-            <div className="w-full h-44 flex items-end justify-between px-2 pt-4 relative">
-              {/* Backgrid Lines */}
-              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-8 pt-4">
-                <div className="border-b border-outline-variant/5 w-full h-[1px]"></div>
-                <div className="border-b border-outline-variant/5 w-full h-[1px]"></div>
-                <div className="border-b border-outline-variant/5 w-full h-[1px]"></div>
+            <div className="grid grid-cols-2 gap-4 py-2">
+              <div className="bg-surface-container-high/20 p-4 rounded-xl border border-outline-variant/10 space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70">Library Size</span>
+                <p className="text-2xl font-serif font-bold text-on-surface">{books.length}</p>
+                <span className="text-[9px] text-on-surface-variant/60 font-semibold block">Volumes imported</span>
               </div>
-
-              {weeklyReadingData.map((data, idx) => {
-                const heightPercentage = (data.minutes / maxMinutes) * 100;
-                return (
-                  <div key={idx} className="flex flex-col items-center gap-2 flex-1 group z-10">
-                    {/* Tooltip on hover */}
-                    <div className="opacity-0 group-hover:opacity-100 absolute bottom-36 bg-surface-container-highest text-[10px] text-on-surface font-bold px-2 py-0.5 rounded border border-outline-variant/20 shadow transition-opacity duration-200">
-                      {data.minutes}m
-                    </div>
-                    {/* The Bar */}
-                    <div className="w-8 sm:w-12 bg-surface-container-highest rounded-t-md relative overflow-hidden h-28 flex items-end">
-                      <div 
-                        className="w-full bg-gradient-to-t from-tertiary/70 to-tertiary rounded-t-md transition-all duration-500" 
-                        style={{ height: `${heightPercentage}%` }}
-                      />
-                    </div>
-                    {/* Day label */}
-                    <span className="text-[10px] font-bold text-on-surface-variant">{data.day}</span>
-                  </div>
-                );
-              })}
+              <div className="bg-surface-container-high/20 p-4 rounded-xl border border-outline-variant/10 space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70">In Progress</span>
+                <p className="text-2xl font-serif font-bold text-primary">
+                  {books.filter(b => b.progress > 0 && b.progress < 100).length}
+                </p>
+                <span className="text-[9px] text-on-surface-variant/60 font-semibold block">Active readings</span>
+              </div>
+              <div className="bg-surface-container-high/20 p-4 rounded-xl border border-outline-variant/10 space-y-1.5 col-span-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70">Completed Reading</span>
+                  <span className="text-xs text-amber-500 font-bold flex items-center gap-1">
+                    <FiZap className="w-3.5 h-3.5 fill-current" />
+                    <span>{streakDays || 14}d Streak</span>
+                  </span>
+                </div>
+                <p className="text-2xl font-serif font-bold text-tertiary">
+                  {books.filter(b => b.progress === 100).length} books
+                </p>
+                <span className="text-[9px] text-on-surface-variant/60 font-semibold block">Read to completion</span>
+              </div>
             </div>
           </div>
 
-          {/* Quick Metrics Column */}
-          <div className="bg-surface-container-low border border-outline-variant/15 rounded-xl p-6 space-y-4 flex flex-col justify-between">
-            <h3 className="text-sm font-bold text-on-surface flex items-center gap-2 border-b border-outline-variant/10 pb-2.5">
-              <FiTrendingUp className="text-primary w-4.5 h-4.5" />
-              <span>Statistics Summary</span>
-            </h3>
-
-            <div className="grid grid-cols-2 gap-4 flex-1 py-1">
-              <div className="bg-surface-container-high/40 p-3 rounded-lg border border-outline-variant/10 space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/80">Monthly Time</span>
-                <p className="text-lg font-serif font-bold text-on-surface">18.4 hrs</p>
-              </div>
-              <div className="bg-surface-container-high/40 p-3 rounded-lg border border-outline-variant/10 space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/80">Pages Read</span>
-                <p className="text-lg font-serif font-bold text-on-surface">1,420 pgs</p>
-              </div>
-              <div className="bg-surface-container-high/40 p-3 rounded-lg border border-outline-variant/10 space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/80">Finished Books</span>
-                <p className="text-lg font-serif font-bold text-on-surface">4 books</p>
-              </div>
-              <div className="bg-surface-container-high/40 p-3 rounded-lg border border-outline-variant/10 space-y-1 flex flex-col justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/80">Active Streak</span>
-                <p className="text-lg font-serif font-bold text-amber-500 flex items-center gap-1.5">
-                  <FiZap className="w-4 h-4 fill-current" />
-                  <span>14 days</span>
-                </p>
-              </div>
-            </div>
-
+          <div className="space-y-2.5 pt-4">
             <button 
               onClick={() => navigate("/plans")}
-              className="w-full mt-2 bg-tertiary/15 text-tertiary border border-tertiary/20 hover:bg-tertiary/25 hover:border-tertiary transition py-2 px-3 rounded-lg font-label-md text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+              className="w-full bg-tertiary/10 text-tertiary border border-tertiary/20 hover:bg-tertiary/20 hover:border-tertiary transition-all duration-200 py-2.5 px-3 rounded-xl font-sans text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
             >
               <FiCalendar className="w-3.5 h-3.5" />
-              <span>View Reading Plans</span>
+              <span>Configure Reading Plans</span>
             </button>
           </div>
-
         </div>
+
       </section>
 
-      {/* 3. Discover Recommendations Grid */}
+      {/* 3. Reading Queue (To Read Next) */}
       <section className="space-y-6">
         <div className="flex items-center justify-between border-b border-outline-variant/10 pb-3">
-          <h2 className="font-headline-md text-xl font-bold text-on-surface">Discover Recommendations</h2>
+          <h2 className="font-serif text-2xl font-bold text-on-surface">Reading Queue</h2>
+          <span className="text-xs text-on-surface-variant/80 font-medium">Unopened volumes ready to explore</span>
         </div>
 
         {books.length === 0 ? (
           <div className="text-center py-16 border border-dashed border-outline-variant/30 rounded-xl bg-surface-container/20 flex flex-col items-center justify-center gap-4">
             <FiBookOpen className="w-12 h-12 text-on-surface-variant/40" />
-            <h3 className="font-headline-md text-xl font-bold text-on-surface">No books in catalog yet</h3>
+            <h3 className="font-serif text-xl font-bold text-on-surface">No books in catalog yet</h3>
             <p className="text-sm text-on-surface-variant max-w-sm leading-relaxed">
               Import ebooks from local path to populate your catalog and view recommendations.
             </p>
@@ -513,16 +542,31 @@ const HomePage: React.FC = () => {
               </button>
             </div>
           </div>
+        ) : books.filter(b => b.progress === 0).length === 0 ? (
+          <div className="text-center py-12 border border-dashed border-outline-variant/20 rounded-2xl bg-surface-container/10 flex flex-col items-center justify-center gap-3">
+            <FiBook className="w-10 h-10 text-on-surface-variant/30" />
+            <h3 className="font-sans text-sm font-bold text-on-surface animate-fade-in">Your queue is empty</h3>
+            <p className="text-xs text-on-surface-variant/85 max-w-xs leading-relaxed">
+              Every book in your library is currently in progress or completed. Time to import something new!
+            </p>
+            <button 
+              onClick={handleImport}
+              className="mt-2 bg-tertiary/15 text-tertiary border border-tertiary/20 hover:bg-tertiary/25 hover:border-tertiary transition px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+            >
+              <FiPlus className="w-3.5 h-3.5" />
+              <span>Import Ebook</span>
+            </button>
+          </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-            {books.slice(0, 5).map((book) => (
+            {books.filter(b => b.progress === 0).slice(0, 10).map((book) => (
               <div 
                 key={book.id}
                 onClick={() => navigate(`/book-details/${book.id}`)}
                 className="group cursor-pointer space-y-3 relative"
               >
                 {/* Visual Cover Art Wrapper */}
-                <div className="relative aspect-[2/3] rounded-lg overflow-hidden border border-outline-variant/20 bg-surface-container-lowest shadow-sm hover:shadow-md transition duration-300">
+                <div className="relative aspect-[2/3] rounded-xl overflow-hidden border border-outline-variant/20 bg-surface-container-lowest shadow-sm hover:shadow-md transition-all duration-300">
                   {covers[book.id] ? (
                     <img 
                       alt={book.title} 
@@ -535,42 +579,32 @@ const HomePage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Rating Stars Overlay tag */}
-                  <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded text-[9px] font-bold text-amber-400 flex items-center gap-1">
-                    <FiStar className="w-2.5 h-2.5 fill-current" />
-                    <span>4.8</span>
+                  {/* Visual indication tag of unopened book */}
+                  <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded text-[8px] font-bold text-tertiary uppercase tracking-wider">
+                    New
                   </div>
 
-                  {/* Bookmark tag overlay */}
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                    className="absolute top-2 right-2 p-1 rounded-full bg-black/40 hover:bg-black/60 text-white/80 hover:text-white transition cursor-pointer"
-                  >
-                    <FiBookmark className="w-3.5 h-3.5" />
-                  </button>
-
                   {/* Resume hover Play Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
                     <button 
                       onClick={(e) => {
                         e.stopPropagation();
                         navigate(`/book/${book.id}`);
                       }}
-                      className="w-8 h-8 rounded-full bg-amber-400 text-black shadow-md hover:scale-105 transition ml-auto flex items-center justify-center"
+                      className="w-8 h-8 rounded-full bg-tertiary text-on-tertiary shadow-md hover:scale-105 transition ml-auto flex items-center justify-center"
+                      title="Start Reading"
                     >
                       <FiPlay className="w-3.5 h-3.5 fill-current ml-0.5" />
                     </button>
                   </div>
                 </div>
 
-                {/* Metadatas */}
+                {/* Metadata */}
                 <div className="space-y-1">
                   <h3 className="font-serif text-sm font-bold text-on-surface truncate group-hover:text-tertiary transition-colors leading-tight">
                     {book.title}
                   </h3>
-                  <p className="font-sans text-[11px] text-on-surface-variant truncate">
+                  <p className="font-sans text-[11px] text-on-surface-variant/80 truncate">
                     {book.author}
                   </p>
                 </div>
@@ -580,6 +614,78 @@ const HomePage: React.FC = () => {
         )}
       </section>
 
+      {/* 4. Library Shelf */}
+      {books.length > 0 && (
+        <section className="space-y-6">
+          <div className="flex items-center justify-between border-b border-outline-variant/10 pb-3">
+            <h2 className="font-serif text-2xl font-bold text-on-surface">Library Shelf</h2>
+            <span className="text-xs text-on-surface-variant/80 font-medium">All books in your archive</span>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            {books.slice(0, 10).map((book) => (
+              <div 
+                key={book.id}
+                onClick={() => navigate(`/book-details/${book.id}`)}
+                className="group cursor-pointer space-y-3 relative"
+              >
+                {/* Visual Cover Art Wrapper */}
+                <div className="relative aspect-[2/3] rounded-xl overflow-hidden border border-outline-variant/20 bg-surface-container-lowest shadow-sm hover:shadow-md transition-all duration-300">
+                  {covers[book.id] ? (
+                    <img 
+                      alt={book.title} 
+                      className="w-full h-full object-cover group-hover:scale-102 transition duration-300" 
+                      src={covers[book.id]} 
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-surface-container flex items-center justify-center">
+                      <FiBookOpen className="text-on-surface-variant/30 w-8 h-8" />
+                    </div>
+                  )}
+
+                  {/* Progress tag overlay if in progress */}
+                  {book.progress > 0 && book.progress < 100 && (
+                    <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded text-[8px] font-bold text-primary uppercase tracking-wider">
+                      {book.progress}%
+                    </div>
+                  )}
+
+                  {/* Completed tag overlay if completed */}
+                  {book.progress === 100 && (
+                    <div className="absolute top-2 left-2 bg-black/65 backdrop-blur-md px-1.5 py-0.5 rounded text-[8px] font-bold text-tertiary uppercase tracking-wider">
+                      Completed
+                    </div>
+                  )}
+
+                  {/* Resume hover Play Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/book/${book.id}`);
+                      }}
+                      className="w-8 h-8 rounded-full bg-tertiary text-on-tertiary shadow-md hover:scale-105 transition ml-auto flex items-center justify-center"
+                      title="Read Book"
+                    >
+                      <FiPlay className="w-3.5 h-3.5 fill-current ml-0.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Metadata */}
+                <div className="space-y-1">
+                  <h3 className="font-serif text-sm font-bold text-on-surface truncate group-hover:text-tertiary transition-colors leading-tight">
+                    {book.title}
+                  </h3>
+                  <p className="font-sans text-[11px] text-on-surface-variant/80 truncate">
+                    {book.author}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 };

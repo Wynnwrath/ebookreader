@@ -16,6 +16,7 @@
   --color-primary: var(--color-primary);
   --color-secondary: var(--color-secondary);
   --color-tertiary: var(--color-tertiary);
+  --color-on-tertiary: var(--color-on-tertiary);
   --color-outline-variant: var(--color-outline-variant);
 
   /* Glass & Borders */

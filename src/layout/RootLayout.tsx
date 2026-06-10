@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
-import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
+import SettingsModal from "../components/SettingsModal";
+import { tauriService } from "../services/tauriService";
+import { TauriBook as SearchBook } from "../types";
 import { 
   FiHome, 
   FiBookOpen, 
@@ -30,18 +32,13 @@ export interface RootLayoutProps {
   userId?: number | null;
 }
 
-interface SearchBook {
-  book_id: number;
-  title: string;
-  author: string;
-}
-
 const RootLayout: React.FC<RootLayoutProps> = ({ userId }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [activeTheme, setActiveTheme] = useState("discord-dark");
   const [searchQuery, setSearchQuery] = useState("");
   const [importTrigger, setImportTrigger] = useState(0);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   // Import Modal State & Handlers
   const [showImportModal, setShowImportModal] = useState(false);
@@ -81,7 +78,7 @@ const RootLayout: React.FC<RootLayoutProps> = ({ userId }) => {
     try {
       const selected = await open({
         multiple: false,
-        filters: [{ name: "EPUB Ebook", extensions: ["epub"] }]
+        filters: [{ name: "Ebook / Document", extensions: ["epub", "pdf"] }]
       });
       if (selected && typeof selected === "string") {
         const fileName = selected.split(/[\\/]/).pop() || "Unknown Ebook";
@@ -95,7 +92,7 @@ const RootLayout: React.FC<RootLayoutProps> = ({ userId }) => {
   const handleConfirmImport = async () => {
     if (!selectedFile) return;
     try {
-      await invoke("import_book", { path: selectedFile.path });
+      await tauriService.importBook(selectedFile.path);
       
       const newImport = { 
         name: selectedFile.name, 
@@ -128,18 +125,18 @@ const RootLayout: React.FC<RootLayoutProps> = ({ userId }) => {
 
   const loadBooksForSearch = async () => {
     try {
-      const list = await invoke<SearchBook[]>("list_books");
-      setSearchBooks(list);
+      const list = await tauriService.listBooks();
+      setSearchBooks(list as any);
 
       // Lazy load cover images for matching books
       const newCovers = { ...searchCovers };
       for (const book of list) {
-        if (!newCovers[book.book_id]) {
+        if (!newCovers[book.id]) {
           try {
-            const coverBytes = await invoke<number[]>("get_cover_img", { bookId: book.book_id });
+            const coverBytes = await tauriService.getCoverImg(book.id);
             if (coverBytes && coverBytes.length > 0) {
               const blob = new Blob([new Uint8Array(coverBytes)], { type: "image/jpeg" });
-              newCovers[book.book_id] = URL.createObjectURL(blob);
+              newCovers[book.id] = URL.createObjectURL(blob);
             }
           } catch (e) {
             // Ignore cover load failures
@@ -283,13 +280,13 @@ const RootLayout: React.FC<RootLayoutProps> = ({ userId }) => {
 
         {/* Settings Footer link */}
         <div className="mt-auto pt-4 border-t border-outline-variant/15">
-          <Link 
-            to="/settings"
-            className="flex items-center gap-4 px-4 py-3 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-high/40 hover:text-tertiary transition-colors"
+          <button 
+            onClick={() => setShowSettingsModal(true)}
+            className="w-full flex items-center gap-4 px-4 py-3 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-high/40 hover:text-tertiary transition-colors cursor-pointer text-left"
           >
             <FiSettings className="w-5 h-5" />
             <span className="font-label-md">Settings</span>
-          </Link>
+          </button>
         </div>
 
       </aside>
@@ -329,13 +326,13 @@ const RootLayout: React.FC<RootLayoutProps> = ({ userId }) => {
                   ) : (
                     filteredBooks.map((book) => (
                       <div
-                        key={book.book_id}
-                        onClick={() => handleSearchItemClick(book.book_id)}
+                        key={book.id}
+                        onClick={() => handleSearchItemClick(book.id)}
                         className="px-3 py-2 flex items-center gap-3 hover:bg-surface-container-high cursor-pointer border-b border-outline-variant/20 last:border-0 transition"
                       >
-                        {searchCovers[book.book_id] ? (
+                        {searchCovers[book.id] ? (
                           <img
-                            src={searchCovers[book.book_id]}
+                            src={searchCovers[book.id]}
                             alt={book.title}
                             className="w-8 h-10 object-cover rounded shadow-sm border border-outline-variant/10"
                           />
@@ -566,6 +563,10 @@ const RootLayout: React.FC<RootLayoutProps> = ({ userId }) => {
         </div>
       )}
 
+      <SettingsModal 
+        isOpen={showSettingsModal} 
+        onClose={() => setShowSettingsModal(false)} 
+      />
     </div>
   );
 };

@@ -13,38 +13,12 @@ import {
   FiCompass,
   FiEdit3
 } from "react-icons/fi";
-import { invoke } from "@tauri-apps/api/core";
 import Button from "../components/ui/Button";
+import { tauriService } from "../services/tauriService";
+import { Collection, Book, TauriBook, ProgressItem } from "../types";
 
 interface OutletContextType {
   userId: number | null;
-}
-
-interface Collection {
-  id: string;
-  name: string;
-  description: string;
-  accentColor: string;
-  bookIds: number[];
-}
-
-interface Book {
-  id: number;
-  title: string;
-  author: string;
-  progress: number;
-}
-
-interface TauriBook {
-  book_id: number;
-  title: string;
-  author?: string;
-}
-
-interface ProgressItem {
-  book_id: number;
-  progress_percentage: number;
-  last_read_at: string | null;
 }
 
 const ACCENT_COLORS = [
@@ -124,8 +98,18 @@ const CollectionsPage: React.FC = () => {
 
   const loadData = async () => {
     try {
-      const allBooks = await invoke<TauriBook[]>("list_books");
-      const allProgress = await invoke<ProgressItem[]>("get_all_reading_progress", { userId });
+      const allBooks = await tauriService.listBooks();
+      
+      const progressPromises = allBooks.map(async (b) => {
+        try {
+          const p = await tauriService.getReadingProgress<ProgressItem | null>({ bookId: b.id });
+          return p;
+        } catch {
+          return null;
+        }
+      });
+      const progressResults = await Promise.all(progressPromises);
+      const allProgress = progressResults.filter((p): p is ProgressItem => p !== null);
 
       const progressMap: Record<number, ProgressItem> = {};
       allProgress.forEach((p) => {
@@ -133,9 +117,9 @@ const CollectionsPage: React.FC = () => {
       });
 
       const formattedBooks: Book[] = allBooks.map((b) => {
-        const prog = progressMap[b.book_id];
+        const prog = progressMap[b.id];
         return {
-          id: b.book_id,
+          id: b.id,
           title: b.title,
           author: b.author || "Unknown Author",
           progress: prog ? Math.round(prog.progress_percentage || 0) : 0,
@@ -148,13 +132,13 @@ const CollectionsPage: React.FC = () => {
       const newCovers: Record<number, string> = {};
       for (const book of allBooks) {
         try {
-          const coverBytes = await invoke<number[]>("get_cover_img", { bookId: book.book_id });
+          const coverBytes = await tauriService.getCoverImg(book.id);
           if (coverBytes && coverBytes.length > 0) {
             const blob = new Blob([new Uint8Array(coverBytes)], { type: "image/jpeg" });
-            newCovers[book.book_id] = URL.createObjectURL(blob);
+            newCovers[book.id] = URL.createObjectURL(blob);
           }
         } catch (e) {
-          console.error(`Failed to load cover for book ${book.book_id}:`, e);
+          console.error(`Failed to load cover for book ${book.id}:`, e);
         }
       }
       setCovers(newCovers);
@@ -240,19 +224,8 @@ const CollectionsPage: React.FC = () => {
   const unsortedBooks = getUnsortedBooks();
 
   return (
-    <div className="w-full space-y-12 p-margin-desktop max-w-container-max mx-auto page-transition pb-24">
+    <div className="w-full space-y-8 p-margin-desktop max-w-container-max mx-auto page-transition pb-24">
       
-      {/* Intro Header Section */}
-      <section className="space-y-4">
-        <h1 className="text-3xl font-display-lg font-bold text-on-surface flex items-center gap-3">
-          <FiFolder className="text-tertiary w-8 h-8" />
-          <span>Curated Collections</span>
-        </h1>
-        <p className="font-body-lg text-lg text-on-surface-variant max-w-2xl leading-relaxed">
-          Your personal taxonomy of knowledge. Organize volumes by discipline, sentiment, or narrative thread.
-        </p>
-      </section>
-
       {/* Bento Grid Layout for Collections */}
       <div className="grid grid-cols-12 gap-6 auto-rows-[240px]">
         
