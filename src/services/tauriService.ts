@@ -4,7 +4,8 @@ import {
   BookDetails, 
   Bookmark, 
   Annotation, 
-  UserInfo 
+  UserInfo,
+  ReadingProgress
 } from "../types";
 
 export const tauriService = {
@@ -43,8 +44,8 @@ export const tauriService = {
   },
 
   // Reading Progress
-  async getReadingProgress<T = any>(params: { bookId: number; userId?: number }): Promise<T> {
-    return await invoke<T>("get_reading_progress", params);
+  async getReadingProgress(params: { bookId: number; userId?: number }): Promise<ReadingProgress | null> {
+    return await invoke<ReadingProgress | null>("get_reading_progress", params);
   },
 
   async updateReadingProgress(params: {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useOutletContext } from "react-router-dom";
 import { 
   FiUser, 
   FiAward, 
@@ -12,6 +13,9 @@ import {
   FiCoffee
 } from "react-icons/fi";
 import Card from "../components/ui/Card";
+import { AppOutletContext } from "../types";
+import { useTheme } from "../hooks/useTheme";
+import { useBooksWithProgress } from "../hooks/useBooksWithProgress";
 
 interface DayData {
   day: string;
@@ -26,37 +30,22 @@ interface Achievement {
 }
 
 const ProfilePage: React.FC = () => {
+  const context = useOutletContext<AppOutletContext>();
+  const userId = context?.userId ?? 1;
+
   const [username, setUsername] = useState<string>("cruiz");
   const [bio, setBio] = useState<string>("Avid sci-fi reader. Exploring the stars, one page at a time.");
   const [isEditing, setIsEditing] = useState<boolean>(false);
-  const [activeTheme, setActiveTheme] = useState<string>("scholarly-dark");
 
-  // Read current theme state on mount
+  // Custom Hooks
+  const { activeTheme, setTheme: handleThemeSelect } = useTheme();
+  const { books, streakDays, loadData } = useBooksWithProgress(userId);
+
   useEffect(() => {
-    const savedTheme = localStorage.getItem("stellaron-theme") || "scholarly-dark";
-    let normalized = "scholarly-dark";
-    if (savedTheme.includes("light")) {
-      normalized = "scholarly-light";
-    } else if (savedTheme.includes("sepia")) {
-      normalized = "scholarly-sepia";
+    if (userId) {
+      loadData(true);
     }
-    setActiveTheme(normalized);
-  }, []);
-
-  const handleThemeSelect = (theme: string) => {
-    setActiveTheme(theme);
-    localStorage.setItem("stellaron-theme", theme);
-    
-    // Apply class globally
-    const root = document.documentElement;
-    root.classList.remove("theme-scholarly-dark", "theme-scholarly-light", "theme-scholarly-sepia", "dark", "light");
-    root.classList.add(`theme-${theme}`);
-    if (theme === "scholarly-dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.add("light");
-    }
-  };
+  }, [userId, loadData]);
 
   // Mock reading statistics (Weekly graph percentages)
   const weekData: DayData[] = [
@@ -69,11 +58,13 @@ const ProfilePage: React.FC = () => {
     { day: "Sun", minutes: 40, pct: "55%" }
   ];
 
+  const completedBooksCount = books.filter(b => b.progress === 100).length;
+
   const achievements: Achievement[] = [
-    { title: "First Voyage", desc: "Successfully imported your first EPUB book.", unlocked: true },
+    { title: "First Voyage", desc: "Successfully imported your first EPUB book.", unlocked: books.length > 0 },
     { title: "Supergiant", desc: "Read for more than 2 hours in a single session.", unlocked: true },
-    { title: "Hyperdrive", desc: "Maintained a 7-day reading streak.", unlocked: true },
-    { title: "Nebula Cartographer", desc: "Fully completed 5 books.", unlocked: false }
+    { title: "Hyperdrive", desc: "Maintained a 7-day reading streak.", unlocked: streakDays >= 7 },
+    { title: "Nebula Cartographer", desc: "Fully completed 5 books.", unlocked: completedBooksCount >= 5 }
   ];
 
   return (
@@ -123,7 +114,7 @@ const ProfilePage: React.FC = () => {
           )}
 
           <div className="flex items-center gap-4 text-xs font-semibold pt-1 justify-center md:justify-start">
-            <span className="flex items-center gap-1 text-primary"><FiZap /> Streak: 12 Days</span>
+            <span className="flex items-center gap-1 text-primary"><FiZap /> Streak: {streakDays} {streakDays === 1 ? "Day" : "Days"}</span>
             <span className="flex items-center gap-1 text-secondary"><FiActivity /> Active Level: Initiate</span>
           </div>
         </div>

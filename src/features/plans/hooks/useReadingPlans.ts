@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ReadingPlan, Book } from "../../../types";
+import { ReadingPlan, Book, ReadingProgress } from "../../../types";
 import { tauriService } from "../../../services/tauriService";
 
 export const useReadingPlans = () => {
@@ -84,9 +84,9 @@ export const useReadingPlans = () => {
         }
       });
       const progressResults = await Promise.all(progressPromises);
-      const allProgress = progressResults.filter((p): p is any => p !== null);
+      const allProgress = progressResults.filter((p): p is ReadingProgress => p !== null);
 
-      const progressMap: Record<number, any> = {};
+      const progressMap: Record<number, ReadingProgress> = {};
       allProgress.forEach((p) => {
         progressMap[p.book_id] = p;
       });

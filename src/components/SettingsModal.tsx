@@ -12,6 +12,8 @@ import {
   FiType
 } from "react-icons/fi";
 import Button from "./ui/Button";
+import { useTheme } from "../hooks/useTheme";
+import { useReaderSettings } from "../hooks/useReaderSettings";
 
 interface ReaderSettings {
   fontSize: number;
@@ -42,16 +44,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [activeTab, setActiveTab] = useState<"general" | "reader">(initialTab);
   
   // General settings local state
-  const [activeTheme, setActiveTheme] = useState<string>("scholarly-dark");
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [enableShortcuts, setEnableShortcuts] = useState<boolean>(true);
 
-  // Reader settings local state (used if readerSettings prop is not supplied)
-  const [localFontSize, setLocalFontSize] = useState<number>(18);
-  const [localLineHeight, setLocalLineHeight] = useState<number>(1.6);
-  const [localFontFamily, setLocalFontFamily] = useState<string>("font-serif");
-  const [localReaderTheme, setLocalReaderTheme] = useState<string>("dark");
-  const [localReaderLayout, setLocalReaderLayout] = useState<"classic" | "redesign">("redesign");
+  // Custom Hooks
+  const { activeTheme, setTheme: handleThemeChange } = useTheme();
+  const localSettings = useReaderSettings();
 
   // Load configuration from localStorage
   useEffect(() => {
@@ -60,31 +58,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     // Active tab default
     setActiveTab(initialTab);
 
-    // App Theme
-    const savedTheme = localStorage.getItem("stellaron-theme") || "scholarly-dark";
-    let normalized = "scholarly-dark";
-    if (savedTheme.includes("light")) {
-      normalized = "scholarly-light";
-    } else if (savedTheme.includes("sepia")) {
-      normalized = "scholarly-sepia";
-    }
-    setActiveTheme(normalized);
-
     // Shortcuts
     const savedShortcuts = localStorage.getItem("stellaron-enable-shortcuts");
     setEnableShortcuts(savedShortcuts === null ? true : savedShortcuts === "true");
-
-    // Reader layout loaded to local state
-    const rFontSize = localStorage.getItem("stellaron-reader-font-size");
-    setLocalFontSize(rFontSize ? parseInt(rFontSize, 10) : 18);
-
-    const rLineHeight = localStorage.getItem("stellaron-reader-line-height");
-    setLocalLineHeight(rLineHeight ? parseFloat(rLineHeight) : 1.6);
-
-    setLocalFontFamily(localStorage.getItem("stellaron-reader-font-family") || "font-serif");
-    setLocalReaderTheme(localStorage.getItem("stellaron-reader-theme") || "dark");
-    setLocalReaderLayout((localStorage.getItem("stellaron-reader-layout") as "classic" | "redesign") || "redesign");
-
   }, [isOpen, initialTab]);
 
   if (!isOpen) return null;
@@ -106,20 +82,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
-  // App Theme Handler
-  const handleThemeChange = (theme: string) => {
-    setActiveTheme(theme);
-    localStorage.setItem("stellaron-theme", theme);
-    const root = document.documentElement;
-    root.classList.remove("theme-scholarly-dark", "theme-scholarly-light", "theme-scholarly-sepia", "dark", "light");
-    root.classList.add(`theme-${theme}`);
-    if (theme === "scholarly-dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.add("light");
-    }
-  };
-
   // Toggle Keyboard Shortcuts
   const handleToggleShortcuts = () => {
     const nextVal = !enableShortcuts;
@@ -127,35 +89,34 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     localStorage.setItem("stellaron-enable-shortcuts", String(nextVal));
   };
 
-  // Update a Reader Setting (write to state + localStorage)
-  const updateReaderSetting = <K extends keyof ReaderSettings>(
-    key: K,
-    val: any,
-    localSetter: (v: any) => void,
-    storageKey: string
-  ) => {
-    localSetter(val);
-    localStorage.setItem(storageKey, String(val));
-    if (readerSettings) {
-      let setterName = "";
-      if (key === "fontSize") setterName = "setFontSize";
-      else if (key === "lineHeight") setterName = "setLineHeight";
-      else if (key === "fontFamily") setterName = "setFontFamily";
-      else if (key === "readerTheme") setterName = "setReaderTheme";
-      else if (key === "readerLayoutMode") setterName = "setReaderLayoutMode";
-
-      if (setterName && (readerSettings as any)[setterName]) {
-        (readerSettings as any)[setterName](val);
-      }
-    }
-  };
-
   // Reader Settings getters
-  const currentFontSize = readerSettings ? readerSettings.fontSize : localFontSize;
-  const currentLineHeight = readerSettings ? readerSettings.lineHeight : localLineHeight;
-  const currentFontFamily = readerSettings ? readerSettings.fontFamily : localFontFamily;
-  const currentReaderTheme = readerSettings ? readerSettings.readerTheme : localReaderTheme;
-  const currentReaderLayout = readerSettings ? readerSettings.readerLayoutMode : localReaderLayout;
+  const currentFontSize = readerSettings ? readerSettings.fontSize : localSettings.fontSize;
+  const currentLineHeight = readerSettings ? readerSettings.lineHeight : localSettings.lineHeight;
+  const currentFontFamily = readerSettings ? readerSettings.fontFamily : localSettings.fontFamily;
+  const currentReaderTheme = readerSettings ? readerSettings.readerTheme : localSettings.readerTheme;
+  const currentReaderLayout = readerSettings ? readerSettings.readerLayoutMode : localSettings.layoutMode;
+
+  // Reader Settings setters
+  const setFontSize = (size: number) => {
+    if (readerSettings) readerSettings.setFontSize(size);
+    else localSettings.setFontSize(size);
+  };
+  const setLineHeight = (height: number) => {
+    if (readerSettings) readerSettings.setLineHeight(height);
+    else localSettings.setLineHeight(height);
+  };
+  const setFontFamily = (family: string) => {
+    if (readerSettings) readerSettings.setFontFamily(family);
+    else localSettings.setFontFamily(family);
+  };
+  const setReaderTheme = (theme: string) => {
+    if (readerSettings) readerSettings.setReaderTheme(theme);
+    else localSettings.setReaderTheme(theme);
+  };
+  const setReaderLayout = (mode: "classic" | "redesign") => {
+    if (readerSettings) readerSettings.setReaderLayoutMode(mode);
+    else localSettings.setLayoutMode(mode);
+  };
 
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[70] flex items-center justify-center p-4 animate-fade-in">
@@ -296,7 +257,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     ].map(layout => (
                       <button
                         key={layout.id}
-                        onClick={() => updateReaderSetting("readerLayoutMode", layout.id, setLocalReaderLayout, "stellaron-reader-layout")}
+                        onClick={() => setReaderLayout(layout.id as "classic" | "redesign")}
                         className={`py-2 px-3 rounded-lg border text-center transition cursor-pointer ${
                           currentReaderLayout === layout.id
                             ? "bg-tertiary text-surface-container-lowest"
@@ -308,7 +269,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     ))}
                   </div>
                 </div>
-
+ 
                 {/* 2. Reading Page Styles */}
                 <div className="space-y-2">
                   <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider block">Reader Canvas Theme</label>
@@ -320,7 +281,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     ].map(mode => (
                       <button
                         key={mode.id}
-                        onClick={() => updateReaderSetting("readerTheme", mode.id, setLocalReaderTheme, "stellaron-reader-theme")}
+                        onClick={() => setReaderTheme(mode.id)}
                         className={`py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer text-center ${mode.style} ${
                           currentReaderTheme === mode.id ? "ring-2 ring-tertiary" : "opacity-80 hover:opacity-100"
                         }`}
@@ -330,7 +291,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     ))}
                   </div>
                 </div>
-
+ 
                 {/* 3. Fonts */}
                 <div className="space-y-4 pt-4 border-t border-outline-variant/10">
                   {/* Font Family selection */}
@@ -344,7 +305,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       ].map(font => (
                         <button
                           key={font.id}
-                          onClick={() => updateReaderSetting("fontFamily", font.id, setLocalFontFamily, "stellaron-reader-font-family")}
+                          onClick={() => setFontFamily(font.id)}
                           className={`py-1.5 rounded-lg border text-center transition cursor-pointer ${
                             currentFontFamily === font.id
                               ? "bg-tertiary text-surface-container-lowest font-bold"
@@ -356,28 +317,28 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       ))}
                     </div>
                   </div>
-
+ 
                   {/* Font Size & Spacing Controls */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider block">Font Size</label>
                       <div className="flex bg-surface border border-outline-variant/20 rounded-lg p-0.5 items-center justify-between">
                         <button 
-                          onClick={() => updateReaderSetting("fontSize", Math.max(12, currentFontSize - 1), setLocalFontSize, "stellaron-reader-font-size")}
+                          onClick={() => setFontSize(Math.max(12, currentFontSize - 1))}
                           className="w-8 h-8 rounded-md text-xs font-bold hover:bg-surface-container-high flex items-center justify-center cursor-pointer"
                         >
                           A-
                         </button>
                         <span className="text-xs font-bold px-2">{currentFontSize}px</span>
                         <button 
-                          onClick={() => updateReaderSetting("fontSize", Math.min(32, currentFontSize + 1), setLocalFontSize, "stellaron-reader-font-size")}
+                          onClick={() => setFontSize(Math.min(32, currentFontSize + 1))}
                           className="w-8 h-8 rounded-md text-xs font-bold hover:bg-surface-container-high flex items-center justify-center cursor-pointer"
                         >
                           A+
                         </button>
                       </div>
                     </div>
-
+ 
                     <div className="space-y-2">
                       <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider block">Line Spacing</label>
                       <div className="flex bg-surface border border-outline-variant/20 rounded-lg p-0.5 text-xs font-semibold">
@@ -388,7 +349,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         ].map(opt => (
                           <button
                             key={opt.value}
-                            onClick={() => updateReaderSetting("lineHeight", opt.value, setLocalLineHeight, "stellaron-reader-line-height")}
+                            onClick={() => setLineHeight(opt.value)}
                             className={`flex-1 py-1.5 rounded-md transition cursor-pointer text-center ${
                               currentLineHeight === opt.value ? "bg-tertiary text-surface-container-lowest font-bold" : "text-on-surface-variant hover:text-on-surface"
                             }`}
@@ -400,16 +361,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                   </div>
                 </div>
-
+ 
                 {/* Reset Buttons */}
                 <div className="pt-4 border-t border-outline-variant/10 flex justify-end">
                   <button
                     onClick={() => {
-                      updateReaderSetting("fontSize", 18, setLocalFontSize, "stellaron-reader-font-size");
-                      updateReaderSetting("lineHeight", 1.6, setLocalLineHeight, "stellaron-reader-line-height");
-                      updateReaderSetting("fontFamily", "font-serif", setLocalFontFamily, "stellaron-reader-font-family");
-                      updateReaderSetting("readerTheme", "dark", setLocalReaderTheme, "stellaron-reader-theme");
-                      updateReaderSetting("readerLayoutMode", "redesign", setLocalReaderLayout, "stellaron-reader-layout");
+                      if (readerSettings) {
+                        readerSettings.setFontSize(18);
+                        readerSettings.setLineHeight(1.6);
+                        readerSettings.setFontFamily("font-serif");
+                        readerSettings.setReaderTheme("dark");
+                        readerSettings.setReaderLayoutMode("redesign");
+                      } else {
+                        localSettings.resetAll();
+                      }
                     }}
                     className="text-[10px] text-tertiary flex items-center gap-1 hover:underline cursor-pointer font-bold"
                   >

@@ -13,18 +13,15 @@ import {
   FiArrowDown,
   FiTrash2
 } from "react-icons/fi";
-import { open, message } from "@tauri-apps/plugin-dialog";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
 import BookCard, { Book } from "../components/ui/BookCard";
 import { tauriService } from "../services/tauriService";
-import { TauriBook, ProgressItem } from "../types";
-
-interface LibraryOutletContext {
-  searchQuery: string;
-  userId: number | null;
-  importTrigger: number;
-}
+import { TauriBook, ProgressItem, AppOutletContext } from "../types";
+import { useBooksWithProgress } from "../hooks/useBooksWithProgress";
+import { useBookCovers } from "../hooks/useBookCovers";
+import { useImport } from "../hooks/useImport";
+import { useFavorites } from "../hooks/useFavorites";
 
 interface LibraryBook extends Book {
   category: string;
@@ -32,7 +29,7 @@ interface LibraryBook extends Book {
 
 const LibraryPage: React.FC = () => {
   const navigate = useNavigate();
-  const { searchQuery, userId, importTrigger } = useOutletContext<LibraryOutletContext>();
+  const { searchQuery, userId, importTrigger } = useOutletContext<AppOutletContext>();
   const [searchParams] = useSearchParams();
   const categoryParam = searchParams.get("category") || "all";
   
@@ -45,148 +42,46 @@ const LibraryPage: React.FC = () => {
   const [sortBy, setSortBy] = useState<string>("title");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
-  const [books, setBooks] = useState<LibraryBook[]>([]);
-  const [covers, setCovers] = useState<Record<number, string>>({});
-  const [favorites, setFavorites] = useState<Set<number>>(new Set());
-  const [loading, setLoading] = useState<boolean>(true);
+  // Custom Hooks
+  const { books: rawBooks, loading: loadingBooks, loadData } = useBooksWithProgress(userId);
+  const { covers, loading: loadingCovers, loadCovers } = useBookCovers();
+  const { handleImport, handleImportFolder } = useImport({
+    onSuccess: () => loadData(true)
+  });
+  const { favorites, toggleFavorite: toggleFavoriteHook } = useFavorites(userId);
 
-  const loadLibrary = async (silent = false) => {
-    try {
-      if (!silent) setLoading(true);
-      const allBooks = await tauriService.listBooks();
-      
-      const progressPromises = allBooks.map(async (b) => {
-        try {
-          const p = await tauriService.getReadingProgress<ProgressItem | null>({ bookId: b.id });
-          return p;
-        } catch {
-          return null;
-        }
-      });
-      const progressResults = await Promise.all(progressPromises);
-      const allProgress = progressResults.filter((p): p is ProgressItem => p !== null);
-
-      const progressMap: Record<number, ProgressItem> = {};
-      allProgress.forEach((p) => {
-        progressMap[p.book_id] = p;
-      });
-
-      // Load favorites from localstorage
-      const savedFavs = localStorage.getItem(`stellaron-favorites-${userId}`);
-      const favSet = savedFavs ? new Set<number>(JSON.parse(savedFavs)) : new Set<number>();
-      setFavorites(favSet);
-
-      const mappedBooks: LibraryBook[] = allBooks.map((b) => {
-        const prog = progressMap[b.id];
-        const progressVal = prog ? Math.round(prog.progress_percentage || 0) : 0;
-        
-        let category = "all";
-        if (progressVal === 100) {
-          category = "completed";
-        } else if (progressVal > 0) {
-          category = "reading";
-        }
-
-        return {
-          id: b.id,
-          title: b.title,
-          author: b.author || "Unknown Author",
-          progress: progressVal,
-          favorite: favSet.has(b.id),
-          category: category,
-        };
-      });
-
-      setBooks(mappedBooks);
-
-      // Load covers
-      const newCovers: Record<number, string> = {};
-      for (const book of allBooks) {
-        try {
-          const coverBytes = await tauriService.getCoverImg(book.id);
-          if (coverBytes && coverBytes.length > 0) {
-            const blob = new Blob([new Uint8Array(coverBytes)], { type: "image/jpeg" });
-            newCovers[book.id] = URL.createObjectURL(blob);
-          }
-        } catch (e) {
-          console.error(`Failed to load cover for book ${book.id}:`, e);
-        }
-      }
-      setCovers(newCovers);
-
-    } catch (err) {
-      console.error("Failed to load library catalog:", err);
-    } finally {
-      setLoading(false);
+  // Derive final books for Library page
+  const books: LibraryBook[] = rawBooks.map(b => {
+    let category = "all";
+    if (b.progress === 100) {
+      category = "completed";
+    } else if (b.progress > 0) {
+      category = "reading";
     }
-  };
+    return {
+      ...b,
+      category,
+      favorite: favorites.has(b.id)
+    };
+  });
 
+  // Load covers when books change
+  useEffect(() => {
+    if (rawBooks.length > 0) {
+      loadCovers(rawBooks.map(b => b.id));
+    }
+  }, [rawBooks, loadCovers]);
+
+  // Sync with main collections reload on parent triggers
   useEffect(() => {
     if (userId) {
-      const isInitial = books.length === 0;
-      loadLibrary(!isInitial);
+      loadData(true);
     }
   }, [userId, importTrigger]);
 
   const toggleFavorite = (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    const newFavs = new Set(favorites);
-    if (newFavs.has(id)) {
-      newFavs.delete(id);
-    } else {
-      newFavs.add(id);
-    }
-    setFavorites(newFavs);
-    localStorage.setItem(`stellaron-favorites-${userId}`, JSON.stringify(Array.from(newFavs)));
-
-    setBooks(prev => prev.map(book => {
-      if (book.id === id) return { ...book, favorite: !book.favorite };
-      return book;
-    }));
-  };
-
-  const handleImport = async () => {
-    try {
-      const selected = await open({
-        multiple: false,
-        filters: [{ name: "Ebook / Document", extensions: ["epub", "pdf"] }]
-      });
-      if (selected && typeof selected === "string") {
-        await tauriService.importBook(selected);
-        await loadLibrary(true);
-      }
-    } catch (err) {
-      console.error("Failed to import book:", err);
-      await message(
-        typeof err === "string" ? err : String(err),
-        { title: "Import Failed", kind: "error" }
-      );
-    }
-  };
-
-  const handleImportFolder = async () => {
-    try {
-      const selected = await open({
-        multiple: false,
-        directory: true
-      });
-      if (selected && typeof selected === "string") {
-        const errors = await tauriService.scanBooksDirectory(selected);
-        await loadLibrary(true);
-        if (errors && errors.length > 0) {
-          await message(
-            `Imported books, but some files failed to import:\n\n${errors.join("\n")}`,
-            { title: "Folder Import Warning", kind: "warning" }
-          );
-        }
-      }
-    } catch (err) {
-      console.error("Failed to import folder:", err);
-      await message(
-        typeof err === "string" ? err : String(err),
-        { title: "Folder Import Failed", kind: "error" }
-      );
-    }
+    toggleFavoriteHook(id);
   };
 
   const handleDeleteBook = async (id: number, title: string, e: React.MouseEvent) => {
@@ -194,7 +89,7 @@ const LibraryPage: React.FC = () => {
     if (confirm(`Are you sure you want to delete "${title}"?`)) {
       try {
         await tauriService.removeBook(id);
-        await loadLibrary(true);
+        await loadData(true);
       } catch (err) {
         console.error("Failed to delete book:", err);
       }
@@ -235,7 +130,7 @@ const LibraryPage: React.FC = () => {
     setSortOrder(prev => prev === "asc" ? "desc" : "asc");
   };
 
-  if (loading) {
+  if (loadingBooks || loadingCovers) {
     return (
       <div className="w-full h-[60vh] flex items-center justify-center text-text-dim text-sm font-semibold">
         Loading library catalog...

@@ -15,30 +15,34 @@ import {
   FiCheckCircle
 } from "react-icons/fi";
 import { tauriService } from "../services/tauriService";
-import { BookDetails, Chapter, ReadingProgress, Collection } from "../types";
+import { BookDetails, Chapter, ReadingProgress, Collection, AppOutletContext } from "../types";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
-
-interface DetailOutletContext {
-  userId: number | null;
-}
+import { useBookCovers } from "../hooks/useBookCovers";
+import { useFavorites } from "../hooks/useFavorites";
 
 const BookDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const context = useOutletContext<DetailOutletContext | null>();
+  const context = useOutletContext<AppOutletContext | null>();
   const userId = context?.userId ?? 1;
+  const collections = context?.collections ?? [];
+  const setCollections = context?.setCollections;
 
   // State
   const [book, setBook] = useState<BookDetails | null>(null);
-  const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [progress, setProgress] = useState<ReadingProgress | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
-  const [isFavorite, setIsFavorite] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<"about" | "chapters">("about");
-  const [collections, setCollections] = useState<Collection[]>([]);
   const [showCollectionDropdown, setShowCollectionDropdown] = useState<boolean>(false);
+
+  // Custom Hooks
+  const { covers, loadSingleCover } = useBookCovers();
+  const { isFavorite: checkIsFavorite, toggleFavorite: toggleFavoriteHook } = useFavorites(userId);
+
+  const coverUrl = book ? covers[book.id] : null;
+  const isFavorite = book ? checkIsFavorite(book.id) : false;
 
   const loadBookData = async () => {
     if (!id) return;
@@ -52,27 +56,12 @@ const BookDetailPage: React.FC = () => {
       const bookData = details;
       setBook(bookData);
 
-      // 1. Fetch Cover image
-      try {
-        const coverBytes = await tauriService.getCoverImg(bookData.id);
-        if (coverBytes && coverBytes.length > 0) {
-          const blob = new Blob([new Uint8Array(coverBytes)], { type: "image/jpeg" });
-          setCoverUrl(URL.createObjectURL(blob));
-        }
-      } catch (e) {
-        console.warn("Cover image not available:", e);
-      }
+      // Load cover via custom hook
+      loadSingleCover(bookData.id);
 
-      // 2. Fetch Favorites status
-      const savedFavs = localStorage.getItem(`stellaron-favorites-${userId}`);
-      if (savedFavs) {
-        const favArray: number[] = JSON.parse(savedFavs);
-        setIsFavorite(favArray.includes(bookData.id));
-      }
-
-      // 3. Fetch Reading Progress
+      // Fetch Reading Progress
       try {
-        const prog = await tauriService.getReadingProgress<ReadingProgress | null>({ 
+        const prog = await tauriService.getReadingProgress({ 
           userId, 
           bookId: bookData.id 
         }).catch(() => null);
@@ -81,7 +70,7 @@ const BookDetailPage: React.FC = () => {
         console.error("Failed to load reading progress:", e);
       }
 
-      // 4. Fetch and Parse Chapters/Pages in memory
+      // Fetch and Parse Chapters/Pages in memory
       if (bookData.file_type === "pdf") {
         try {
           const pageCount = await tauriService.getPdfPageCount(bookData.file_path);
@@ -131,16 +120,8 @@ const BookDetailPage: React.FC = () => {
     }
   };
 
-  const loadCollections = () => {
-    const saved = localStorage.getItem(`stellaron-collections-${userId}`);
-    if (saved) {
-      setCollections(JSON.parse(saved));
-    }
-  };
-
   useEffect(() => {
     loadBookData();
-    loadCollections();
   }, [id, userId]);
 
   useEffect(() => {
@@ -152,7 +133,7 @@ const BookDetailPage: React.FC = () => {
   }, []);
 
   const toggleBookInCollection = (collectionId: string) => {
-    if (!book) return;
+    if (!book || !setCollections) return;
     const updated = collections.map(c => {
       if (c.id === collectionId) {
         const exists = c.bookIds.includes(book.id);
@@ -168,19 +149,9 @@ const BookDetailPage: React.FC = () => {
   };
 
   const toggleFavorite = () => {
-    if (!book) return;
-    const bookId = book.id;
-    const savedFavs = localStorage.getItem(`stellaron-favorites-${userId}`);
-    const favSet = savedFavs ? new Set<number>(JSON.parse(savedFavs)) : new Set<number>();
-    
-    if (favSet.has(bookId)) {
-      favSet.delete(bookId);
-      setIsFavorite(false);
-    } else {
-      favSet.add(bookId);
-      setIsFavorite(true);
+    if (book) {
+      toggleFavoriteHook(book.id);
     }
-    localStorage.setItem(`stellaron-favorites-${userId}`, JSON.stringify(Array.from(favSet)));
   };
 
   const handleDelete = async () => {
