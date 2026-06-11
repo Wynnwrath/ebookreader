@@ -15,11 +15,17 @@ import {
   FiEdit3
 } from "react-icons/fi";
 import Button from "../components/ui/Button";
+import CollectionDetailDrawer from "../components/CollectionDetailDrawer";
 import { tauriService } from "../services/tauriService";
 import { Collection, Book, TauriBook, ProgressItem } from "../types";
 
 interface OutletContextType {
   userId: number | null;
+  collections: Collection[];
+  setCollections: React.Dispatch<React.SetStateAction<Collection[]>>;
+  activeCollectionId: string | null;
+  setActiveCollectionId: React.Dispatch<React.SetStateAction<string | null>>;
+  loadCollections: () => void;
 }
 
 const ACCENT_COLORS = [
@@ -42,12 +48,17 @@ const IMAGE_PRESETS = [
 const CollectionsPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { userId } = useOutletContext<OutletContextType>();
+  const { 
+    userId,
+    collections,
+    setCollections,
+    activeCollectionId,
+    setActiveCollectionId,
+    loadCollections
+  } = useOutletContext<OutletContextType>();
 
   const [books, setBooks] = useState<Book[]>([]);
   const [covers, setCovers] = useState<Record<number, string>>({});
-  const [collections, setCollections] = useState<Collection[]>([]);
-  const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
 
   // New collection form state
@@ -56,67 +67,6 @@ const CollectionsPage: React.FC = () => {
   const [newColDesc, setNewColDesc] = useState("");
   const [newColColor, setNewColColor] = useState(ACCENT_COLORS[0].value);
   const [newColImage, setNewColImage] = useState(IMAGE_PRESETS[0].value);
-
-  const defaultCollections: Collection[] = [
-    {
-      id: "philosophy",
-      name: "Philosophy & Ethics",
-      description: "Meditations on existence, morality, and the nature of consciousness.",
-      accentColor: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-      bookIds: [],
-      coverImage: "https://lh3.googleusercontent.com/aida-public/AB6AXuBADxipR4kafjQ3B8ms2HYo8xOTkT89WTQd142yrxjlu-goN3ohm90i2OVZmx0F8fzm2Y3PAkOlnNczPeFHi3RRIWrkLSltQAmRiffdq1RsCGo1B2sIMZUBo3i2voMuZF3A4-rd-TjRwXN_jWJQ4c7beDY35CuY67hiyQmR84vYPKipwBvW6I_Iwy5oFLf30T1bgWTJbAb831p00dSKjElxlAFAFlDjCVnEhfNMbk3YkjlccZ2qsjxvcyhNHUi0IHqF7iEQUK8wC-s",
-    },
-    {
-      id: "science",
-      name: "Science & Nature",
-      description: "Inquiries into physical reality, taxonomy, and cosmic structure.",
-      accentColor: "bg-blue-500/10 text-blue-500 border-blue-500/20",
-      bookIds: [],
-      coverImage: "https://lh3.googleusercontent.com/aida-public/AB6AXuC0ZOxxfq410kcSfE_qrDjZHcPxYzCCVpKnkaGX-z9i-w4LmBTy1jZksfVxlrl2OCCERqp-QtUmSCFXbcwUXid5QcBBpeG651F472Gjj6qh4_hAJTUE25ll5a3AyrejEJSejEaAfIk84N3Z_irEg8Nzs7AqCFu2zYpZCJfWEWfjfm4wfVwS7lZcTxW9KI-LkSfDDC30faI5h6VHsfljiSw6aqbAV_8DkiXZsVFLyoRBu9ALZppcNkjVl9ffn528Wu2peWc6tAUG44k",
-    },
-    {
-      id: "fiction",
-      name: "Literary Fiction",
-      description: "Novels, poems, and stories that illuminate the human condition.",
-      accentColor: "bg-amber-500/10 text-amber-500 border-amber-500/20",
-      bookIds: [],
-      coverImage: "https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&q=80&w=600",
-    },
-    {
-      id: "history",
-      name: "Historical Archives",
-      description: "Primary sources, biographies, and global histories spanning Antiquity to the Modern Era.",
-      accentColor: "bg-orange-500/10 text-orange-500 border-orange-500/20",
-      bookIds: [],
-      coverImage: "https://lh3.googleusercontent.com/aida-public/AB6AXuBLlUf9k2HWN6HAvjNGS34zqHpwj4pboo5htbpCVdpQkBPWFu6-04qg5aFaqb8o82I5UA5NepHukjgkw_DCz-Rhj3GkfzMG7r0AfhPEY9YZ-Pg6u9CSOtFe-CJsyGGthl1-3OwgUQUwPAXtkCEdabro11fUXP3Cd8I97rhixS3vwkS0FCO-qR5eEzdWlpE-KS41nMc769k2H2LyhHd7mXhWY8LNBx4EQq-UMxCUBr8uivQ0Dl8fE67zYsAIGfffAZ-AC0oXhQaqRWE",
-    }
-  ];
-
-  // Load collections from localStorage with migration logic
-  const loadCollections = () => {
-    const saved = localStorage.getItem(`stellaron-collections-${userId}`);
-    if (saved) {
-      try {
-        const parsed: Collection[] = JSON.parse(saved);
-        const migrated = parsed.map(c => {
-          const matchingDefault = defaultCollections.find(d => d.id === c.id);
-          if (matchingDefault) {
-            return {
-              ...matchingDefault,
-              bookIds: c.bookIds, // preserve user's book associations
-            };
-          }
-          return c;
-        });
-        setCollections(migrated);
-      } catch (e) {
-        setCollections(defaultCollections);
-      }
-    } else {
-      setCollections(defaultCollections);
-      localStorage.setItem(`stellaron-collections-${userId}`, JSON.stringify(defaultCollections));
-    }
-  };
 
   const saveCollections = (updated: Collection[]) => {
     setCollections(updated);
@@ -194,6 +144,8 @@ const CollectionsPage: React.FC = () => {
     }
   }, [location]);
 
+
+
   const handleCreateCollection = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newColName.trim()) return;
@@ -214,8 +166,8 @@ const CollectionsPage: React.FC = () => {
     setShowAddModal(false);
   };
 
-  const handleDeleteCollection = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDeleteCollection = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     if (confirm("Are you sure you want to delete this collection? Books inside will not be deleted.")) {
       const updated = collections.filter(c => c.id !== id);
       saveCollections(updated);
@@ -235,8 +187,8 @@ const CollectionsPage: React.FC = () => {
     saveCollections(updated);
   };
 
-  const handleRemoveBookFromCollection = (collectionId: string, bookId: number, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleRemoveBookFromCollection = (collectionId: string, bookId: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     const updated = collections.map(c => {
       if (c.id === collectionId) {
         return { ...c, bookIds: c.bookIds.filter(id => id !== bookId) };
@@ -469,8 +421,8 @@ const CollectionsPage: React.FC = () => {
     }
   };
 
-  const activeCollection = collections.find(c => c.id === activeCollectionId);
-  const activeColBooks = activeCollection ? getCollectionBooks(activeCollection.id) : [];
+  const activeCollection = collections.find(c => c.id === activeCollectionId) || null;
+  const displayColBooks = activeCollection ? getCollectionBooks(activeCollection.id) : [];
   const unsortedBooks = getUnsortedBooks();
 
   return (
@@ -544,139 +496,18 @@ const CollectionsPage: React.FC = () => {
       </section>
 
       {/* Collection Detail Drawer / Modal Overlay */}
-      {activeCollection && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-surface-container-lowest border-l border-outline-variant/20 h-full w-full max-w-lg shadow-2xl p-8 flex flex-col justify-between animate-in slide-in-from-right duration-300">
-            
-            {/* Header info */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${activeCollection.accentColor}`}>
-                  {activeColBooks.length} Volumes
-                </span>
-                <button 
-                  onClick={() => setActiveCollectionId(null)}
-                  className="text-on-surface-variant hover:text-on-surface p-2 rounded-full hover:bg-surface-container-high transition-colors cursor-pointer"
-                >
-                  <FiX className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="space-y-2">
-                <h2 className="text-2xl font-display-lg font-bold text-on-surface">{activeCollection.name}</h2>
-                <p className="text-sm text-on-surface-variant leading-relaxed">{activeCollection.description}</p>
-              </div>
-
-              {/* Quick Add Volume */}
-              <div className="pt-4 border-t border-outline-variant/15 space-y-2">
-                <h4 className="text-xs font-bold text-on-surface uppercase tracking-wider">Add Volume to Collection</h4>
-                <select
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      handleAssignBook(activeCollection.id, Number(e.target.value));
-                      e.target.value = "";
-                    }
-                  }}
-                  className="w-full bg-surface-container border border-outline-variant/30 text-on-surface rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-tertiary"
-                  defaultValue=""
-                >
-                  <option value="" disabled>Choose a book to add...</option>
-                  {books
-                    .filter(b => !activeCollection.bookIds.includes(b.id))
-                    .map(b => (
-                      <option key={b.id} value={b.id}>
-                        {b.title}
-                      </option>
-                    ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Books in collection (Middle Scrollable) */}
-            <div className="flex-1 my-6 overflow-y-auto min-h-0 no-scrollbar space-y-3">
-              <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Catalogued Volumes</h3>
-              {activeColBooks.length === 0 ? (
-                <p className="text-sm text-on-surface-variant italic py-8 text-center border border-dashed border-outline-variant/20 rounded-xl">
-                  No volumes in this collection yet. Select a volume from the dropdown above to catalog it!
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {activeColBooks.map((book) => (
-                    <div 
-                      key={book.id}
-                      onClick={() => {
-                        setActiveCollectionId(null);
-                        navigate(`/book-details/${book.id}`);
-                      }}
-                      className="flex items-center justify-between p-3 rounded-lg border border-outline-variant/10 bg-surface-container/50 hover:bg-surface-container-high/30 transition-all cursor-pointer group"
-                    >
-                      <div className="flex items-center gap-3 min-w-0 pr-2">
-                        {covers[book.id] ? (
-                          <img 
-                            src={covers[book.id]} 
-                            alt={book.title} 
-                            className="w-8 h-10 object-cover rounded shadow-sm shrink-0 cover-image"
-                          />
-                        ) : (
-                          <div className="w-8 h-10 rounded bg-surface border border-outline-variant/20 flex items-center justify-center shrink-0">
-                            <FiBookOpen className="w-4 h-4 text-on-surface-variant" />
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <h4 className="text-xs font-bold text-on-surface truncate group-hover:text-tertiary transition-colors">{book.title}</h4>
-                          <p className="text-[10px] text-on-surface-variant truncate">{book.author}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveCollectionId(null);
-                            navigate(`/book/${book.id}`);
-                          }}
-                          className="p-1.5 rounded hover:bg-tertiary/10 text-on-surface-variant hover:text-tertiary transition cursor-pointer"
-                          title="Read Now"
-                        >
-                          <FiPlay className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={(e) => handleRemoveBookFromCollection(activeCollection.id, book.id, e)}
-                          className="p-1.5 rounded hover:bg-red-500/10 text-on-surface-variant hover:text-red-500 transition shrink-0 cursor-pointer"
-                          title="Remove from Collection"
-                        >
-                          <FiX className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Bottom Actions */}
-            <div className="pt-4 border-t border-outline-variant/15 flex items-center justify-between">
-              <button
-                onClick={(e) => {
-                  handleDeleteCollection(activeCollection.id, e);
-                  setActiveCollectionId(null);
-                }}
-                className="flex items-center gap-2 text-xs font-bold text-red-500 hover:text-red-400 transition animate-pop-in"
-              >
-                <FiTrash2 className="w-4 h-4" />
-                <span>Delete Collection</span>
-              </button>
-              <button
-                onClick={() => setActiveCollectionId(null)}
-                className="px-5 py-2 bg-surface-container hover:bg-surface-container-high text-on-surface border border-outline-variant/25 rounded-lg text-xs font-bold transition cursor-pointer"
-              >
-                Close
-              </button>
-            </div>
-
-          </div>
-        </div>,
-        document.body
-      )}
+      <CollectionDetailDrawer
+        isOpen={activeCollectionId !== null}
+        activeCollectionId={activeCollectionId}
+        onClose={() => setActiveCollectionId(null)}
+        displayCollection={activeCollection}
+        displayColBooks={displayColBooks}
+        covers={covers}
+        books={books}
+        onAssignBook={handleAssignBook}
+        onRemoveBook={handleRemoveBookFromCollection}
+        onDeleteCollection={handleDeleteCollection}
+      />
 
       {/* Modal for adding collection */}
       {showAddModal && createPortal(

@@ -18,81 +18,77 @@ import {
 } from "react-icons/fi";
 import { tauriService } from "../services/tauriService";
 import { TauriBook, ProgressItem, Book, Annotation, ExtendedAnnotation, Collection } from "../types";
+import CollectionDetailDrawer from "../components/CollectionDetailDrawer";
 
 interface OutletContextType {
   userId: number | null;
   importTrigger: number;
+  collections: Collection[];
+  setCollections: React.Dispatch<React.SetStateAction<Collection[]>>;
+  activeCollectionId: string | null;
+  setActiveCollectionId: React.Dispatch<React.SetStateAction<string | null>>;
+  loadCollections: () => void;
 }
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
-  const { userId, importTrigger } = useOutletContext<OutletContextType>();
+  const { 
+    userId, 
+    importTrigger,
+    collections,
+    setCollections,
+    activeCollectionId,
+    setActiveCollectionId,
+    loadCollections
+  } = useOutletContext<OutletContextType>();
 
   const [books, setBooks] = useState<Book[]>([]);
   const [covers, setCovers] = useState<Record<number, string>>({});
   const [streakDays, setStreakDays] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [recentAnnotations, setRecentAnnotations] = useState<ExtendedAnnotation[]>([]);
-  const [collections, setCollections] = useState<Collection[]>([]);
 
-  const defaultCollections: Collection[] = [
-    {
-      id: "philosophy",
-      name: "Philosophy & Ethics",
-      description: "Meditations on existence, morality, and the nature of consciousness.",
-      accentColor: "border-tertiary text-tertiary",
-      bookIds: [],
-      coverImage: "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=1200&q=80"
-    },
-    {
-      id: "science",
-      name: "Science & Nature",
-      description: "Exploring the cosmos, evolution, and the natural laws that govern our reality.",
-      accentColor: "border-secondary text-secondary",
-      bookIds: [],
-      coverImage: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80"
-    },
-    {
-      id: "fiction",
-      name: "Literary Fiction",
-      description: "Masterpieces of narrative voice, character depth, and linguistic beauty.",
-      accentColor: "border-primary text-primary",
-      bookIds: [],
-      coverImage: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=1200&q=80"
-    },
-    {
-      id: "history",
-      name: "Historical Archives",
-      description: "Primary sources, biographies, and global histories spanning Antiquity to the Modern Era.",
-      accentColor: "border-outline text-on-surface-variant",
-      bookIds: [],
-      coverImage: "https://images.unsplash.com/photo-1461360228754-6e81c478b882?auto=format&fit=crop&w=1200&q=80"
-    }
-  ];
+  const saveCollections = (updated: Collection[]) => {
+    setCollections(updated);
+    localStorage.setItem(`stellaron-collections-${userId}`, JSON.stringify(updated));
+  };
 
-  const loadCollections = () => {
-    const saved = localStorage.getItem(`stellaron-collections-${userId}`);
-    if (saved) {
-      try {
-        const parsed: Collection[] = JSON.parse(saved);
-        const migrated = parsed.map(c => {
-          const matchingDefault = defaultCollections.find(d => d.id === c.id);
-          if (matchingDefault) {
-            return {
-              ...matchingDefault,
-              bookIds: c.bookIds,
-            };
-          }
-          return c;
-        });
-        setCollections(migrated);
-      } catch (e) {
-        setCollections(defaultCollections);
+  const handleAssignBook = (collectionId: string, bookId: number) => {
+    const updated = collections.map(c => {
+      if (c.id === collectionId) {
+        if (!c.bookIds.includes(bookId)) {
+          return { ...c, bookIds: [...c.bookIds, bookId] };
+        }
       }
-    } else {
-      setCollections(defaultCollections);
+      return c;
+    });
+    saveCollections(updated);
+  };
+
+  const handleRemoveBookFromCollection = (collectionId: string, bookId: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const updated = collections.map(c => {
+      if (c.id === collectionId) {
+        return { ...c, bookIds: c.bookIds.filter(id => id !== bookId) };
+      }
+      return c;
+    });
+    saveCollections(updated);
+  };
+
+  const handleDeleteCollection = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (confirm("Are you sure you want to delete this collection? Books inside will not be deleted.")) {
+      const updated = collections.filter(c => c.id !== id);
+      saveCollections(updated);
+      if (activeCollectionId === id) setActiveCollectionId(null);
     }
   };
+
+  const displayCollection = collections.find(c => c.id === activeCollectionId) || null;
+  const displayColBooks = displayCollection 
+    ? books.filter(b => displayCollection.bookIds.includes(b.id)) 
+    : [];
 
   const literaryQuotes = [
     { text: "I have always imagined that Paradise will be a kind of library.", author: "Jorge Luis Borges" },
@@ -483,7 +479,7 @@ const HomePage: React.FC = () => {
             collections.map((col) => (
               <div 
                 key={col.id}
-                onClick={() => navigate("/collections", { state: { activeCollectionId: col.id } })}
+                onClick={() => setActiveCollectionId(col.id)}
                 className="group relative h-48 rounded-2xl overflow-hidden cursor-pointer border border-outline-variant/10 card-glow transition-all duration-500 bg-surface-container-low shadow-sm"
               >
                 {col.coverImage ? (
@@ -515,7 +511,7 @@ const HomePage: React.FC = () => {
               {collections.slice(0, 3).map((col) => (
                 <div 
                   key={col.id}
-                  onClick={() => navigate("/collections", { state: { activeCollectionId: col.id } })}
+                  onClick={() => setActiveCollectionId(col.id)}
                   className="group relative h-48 rounded-2xl overflow-hidden cursor-pointer border border-outline-variant/10 card-glow transition-all duration-500 bg-surface-container-low shadow-sm"
                 >
                   {col.coverImage ? (
@@ -841,6 +837,19 @@ const HomePage: React.FC = () => {
           </div>
         </section>
       )}
+
+      <CollectionDetailDrawer
+        isOpen={activeCollectionId !== null}
+        activeCollectionId={activeCollectionId}
+        onClose={() => setActiveCollectionId(null)}
+        displayCollection={displayCollection}
+        displayColBooks={displayColBooks}
+        covers={covers}
+        books={books}
+        onAssignBook={handleAssignBook}
+        onRemoveBook={handleRemoveBookFromCollection}
+        onDeleteCollection={handleDeleteCollection}
+      />
     </div>
   );
 };

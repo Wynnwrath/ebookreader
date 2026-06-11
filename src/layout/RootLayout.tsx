@@ -3,7 +3,7 @@ import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { open } from "@tauri-apps/plugin-dialog";
 import SettingsModal from "../components/SettingsModal";
 import { tauriService } from "../services/tauriService";
-import { TauriBook as SearchBook } from "../types";
+import { TauriBook as SearchBook, Collection } from "../types";
 import { 
   FiHome, 
   FiBookOpen, 
@@ -25,7 +25,9 @@ import {
   FiX,
   FiClock,
   FiFileText,
-  FiCalendar
+  FiCalendar,
+  FiChevronDown,
+  FiChevronRight
 } from "react-icons/fi";
 
 export interface RootLayoutProps {
@@ -39,6 +41,116 @@ const RootLayout: React.FC<RootLayoutProps> = ({ userId }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [importTrigger, setImportTrigger] = useState(0);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
+  const [isCollectionsExpanded, setIsCollectionsExpanded] = useState<boolean>(() => {
+    const saved = localStorage.getItem("stellaron-sidebar-collections-expanded");
+    return saved === null ? true : saved === "true";
+  });
+
+  const defaultCollections: Collection[] = [
+    {
+      id: "philosophy",
+      name: "Philosophy & Ethics",
+      description: "Meditations on existence, morality, and the nature of consciousness.",
+      accentColor: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+      bookIds: [],
+      coverImage: "https://lh3.googleusercontent.com/aida-public/AB6AXuBADxipR4kafjQ3B8ms2HYo8xOTkT89WTQd142yrxjlu-goN3ohm90i2OVZmx0F8fzm2Y3PAkOlnNczPeFHi3RRIWrkLSltQAmRiffdq1RsCGo1B2sIMZUBo3i2voMuZF3A4-rd-TjRwXN_jWJQ4c7beDY35CuY67hiyQmR84vYPKipwBvW6I_Iwy5oFLf30T1bgWTJbAb831p00dSKjElxlAFAFlDjCVnEhfNMbk3YkjlccZ2qsjxvcyhNHUi0IHqF7iEQUK8wC-s",
+    },
+    {
+      id: "science",
+      name: "Science & Nature",
+      description: "Inquiries into physical reality, taxonomy, and cosmic structure.",
+      accentColor: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+      bookIds: [],
+      coverImage: "https://lh3.googleusercontent.com/aida-public/AB6AXuC0ZOxxfq410kcSfE_qrDjZHcPxYzCCVpKnkaGX-z9i-w4LmBTy1jZksfVxlrl2OCCERqp-QtUmSCFXbcwUXid5QcBBpeG651F472Gjj6qh4_hAJTUE25ll5a3AyrejEJSejEaAfIk84N3Z_irEg8Nzs7AqCFu2zYpZCJfWEWfjfm4wfVwS7lZcTxW9KI-LkSfDDC30faI5h6VHsfljiSw6aqbAV_8DkiXZsVFLyoRBu9ALZppcNkjVl9ffn528Wu2peWc6tAUG44k",
+    },
+    {
+      id: "fiction",
+      name: "Literary Fiction",
+      description: "Novels, poems, and stories that illuminate the human condition.",
+      accentColor: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+      bookIds: [],
+      coverImage: "https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&q=80&w=600",
+    },
+    {
+      id: "history",
+      name: "Historical Archives",
+      description: "Primary sources, biographies, and global histories spanning Antiquity to the Modern Era.",
+      accentColor: "bg-orange-500/10 text-orange-500 border-orange-500/20",
+      bookIds: [],
+      coverImage: "https://lh3.googleusercontent.com/aida-public/AB6AXuBLlUf9k2HWN6HAvjNGS34zqHpwj4pboo5htbpCVdpQkBPWFu6-04qg5aFaqb8o82I5UA5NepHukjgkw_DCz-Rhj3GkfzMG7r0AfhPEY9YZ-Pg6u9CSOtFe-CJsyGGthl1-3OwgUQUwPAXtkCEdabro11fUXP3Cd8I97rhixS3vwkS0FCO-qR5eEzdWlpE-KS41nMc769k2H2LyhHd7mXhWY8LNBx4EQq-UMxCUBr8uivQ0Dl8fE67zYsAIGfffAZ-AC0oXhQaqRWE",
+    }
+  ];
+
+  const loadCollections = () => {
+    if (!userId) return;
+    const saved = localStorage.getItem(`stellaron-collections-${userId}`);
+    if (saved) {
+      try {
+        const parsed: Collection[] = JSON.parse(saved);
+        const migrated = parsed.map(c => {
+          const matchingDefault = defaultCollections.find(d => d.id === c.id);
+          if (matchingDefault) {
+            return {
+              ...matchingDefault,
+              bookIds: c.bookIds,
+            };
+          }
+          return c;
+        });
+        setCollections(migrated);
+      } catch (e) {
+        setCollections(defaultCollections);
+      }
+    } else {
+      setCollections(defaultCollections);
+      localStorage.setItem(`stellaron-collections-${userId}`, JSON.stringify(defaultCollections));
+    }
+  };
+
+  useEffect(() => {
+    if (userId) {
+      loadCollections();
+    }
+  }, [userId]);
+
+  // Deep linking or cross-page state loading
+  useEffect(() => {
+    if (location.state?.activeCollectionId) {
+      setActiveCollectionId(location.state.activeCollectionId);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
+
+  const handleSidebarCollectionClick = (colId: string) => {
+    if (location.pathname !== "/" && location.pathname !== "/collections") {
+      navigate("/collections");
+    }
+    setActiveCollectionId(colId);
+  };
+
+  const toggleCollectionsExpanded = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const nextVal = !isCollectionsExpanded;
+    setIsCollectionsExpanded(nextVal);
+    localStorage.setItem("stellaron-sidebar-collections-expanded", String(nextVal));
+  };
+
+  const getDotColorClass = (accentColor: string) => {
+    if (accentColor.includes("emerald")) return "bg-emerald-500";
+    if (accentColor.includes("amber")) return "bg-amber-500";
+    if (accentColor.includes("orange")) return "bg-orange-500";
+    if (accentColor.includes("blue")) return "bg-blue-500";
+    if (accentColor.includes("indigo")) return "bg-indigo-500";
+    if (accentColor.includes("slate")) return "bg-slate-500";
+    if (accentColor.includes("tertiary")) return "bg-tertiary";
+    if (accentColor.includes("secondary")) return "bg-secondary";
+    if (accentColor.includes("primary")) return "bg-primary";
+    return "bg-tertiary";
+  };
 
   // Import Modal State & Handlers
   const [showImportModal, setShowImportModal] = useState(false);
@@ -220,7 +332,7 @@ const RootLayout: React.FC<RootLayoutProps> = ({ userId }) => {
     <div className="w-screen h-screen flex bg-bg text-on-surface overflow-hidden select-none">
       
       {/* 1. STITCH LUMINA SIDEBAR */}
-      <aside className="w-[280px] bg-surface-container-low dark:bg-surface-container-lowest backdrop-blur-xl border-r border-outline-variant/20 shadow-sm flex flex-col py-8 px-6 gap-4 z-40 hidden md:flex shrink-0">
+      <aside className="w-[280px] bg-surface-container-low dark:bg-surface-container-lowest backdrop-blur-xl border-r border-outline-variant/20 shadow-sm flex flex-col py-8 px-6 gap-4 z-[60] hidden md:flex shrink-0">
         
         {/* Workspace Brand Header with Avatar (Clickable to User Profile) */}
         <div 
@@ -257,23 +369,60 @@ const RootLayout: React.FC<RootLayoutProps> = ({ userId }) => {
             const isActive = location.pathname === link.path;
 
             return (
-              <Link
-                key={link.path}
-                to={link.path}
-                className={`flex items-center justify-between px-4 py-3 rounded-lg text-label-md transition-all duration-300 group ${
-                  isActive 
-                    ? "text-tertiary font-bold bg-surface-container dark:bg-surface-container-high/60 scale-98" 
-                    : "text-on-surface-variant font-medium hover:bg-surface-container-high/40 hover:text-tertiary"
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  <Icon className={`w-5 h-5 shrink-0 ${isActive ? "text-tertiary" : "text-on-surface-variant/70 group-hover:text-tertiary"} transition-colors`} />
-                  <span>{link.name}</span>
+              <React.Fragment key={link.path}>
+                <div className="relative flex items-center w-full">
+                  <Link
+                    to={link.path}
+                    className={`flex-1 flex items-center justify-between px-4 py-3 rounded-lg text-label-md transition-all duration-300 group ${
+                      isActive 
+                        ? "text-tertiary font-bold bg-surface-container dark:bg-surface-container-high/60 scale-98" 
+                        : "text-on-surface-variant font-medium hover:bg-surface-container-high/40 hover:text-tertiary"
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <Icon className={`w-5 h-5 shrink-0 ${isActive ? "text-tertiary" : "text-on-surface-variant/70 group-hover:text-tertiary"} transition-colors`} />
+                      <span>{link.name}</span>
+                    </div>
+                    {link.name !== "Collections" && isActive && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-tertiary shrink-0" />
+                    )}
+                  </Link>
+
+                  {link.name === "Collections" && collections.length > 0 && (
+                    <button
+                      onClick={toggleCollectionsExpanded}
+                      className="absolute right-3 p-1.5 rounded hover:bg-surface-container-highest/60 text-on-surface-variant/75 hover:text-tertiary transition cursor-pointer z-10 flex items-center justify-center"
+                      title={isCollectionsExpanded ? "Minimize Collections" : "Expand Collections"}
+                    >
+                      {isCollectionsExpanded ? (
+                        <FiChevronDown className="w-4 h-4" />
+                      ) : (
+                        <FiChevronRight className="w-4 h-4" />
+                      )}
+                    </button>
+                  )}
                 </div>
-                {isActive && (
-                  <div className="w-1.5 h-1.5 rounded-full bg-tertiary shrink-0" />
+
+                {link.name === "Collections" && collections.length > 0 && isCollectionsExpanded && (
+                  <div className="pl-9 pr-2 py-1 flex flex-col gap-1 text-xs text-on-surface-variant/80 border-l border-outline-variant/10 ml-6 mt-1 mb-2 animate-fade-in">
+                    {collections.map((col) => {
+                      const isColActive = activeCollectionId === col.id;
+                      return (
+                        <button
+                          key={col.id}
+                          onClick={() => handleSidebarCollectionClick(col.id)}
+                          className={`flex items-center gap-2.5 py-1.5 px-3 rounded hover:bg-surface-container-high/30 hover:text-tertiary transition text-left cursor-pointer font-sans ${
+                            isColActive ? "text-tertiary font-bold bg-surface-container/40" : "text-on-surface-variant/70 font-medium"
+                          }`}
+                        >
+                          <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${getDotColorClass(col.accentColor)}`} />
+                          <span className="truncate text-[11px]">{col.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
-              </Link>
+              </React.Fragment>
             );
           })}
         </nav>
@@ -394,7 +543,17 @@ const RootLayout: React.FC<RootLayoutProps> = ({ userId }) => {
 
         {/* Dynamic Inner Page viewport */}
         <main className="flex-1 overflow-y-auto no-scrollbar bg-bg relative">
-          <Outlet context={{ searchQuery, setSearchQuery, userId, importTrigger }} />
+          <Outlet context={{ 
+            searchQuery, 
+            setSearchQuery, 
+            userId, 
+            importTrigger, 
+            collections, 
+            setCollections, 
+            activeCollectionId, 
+            setActiveCollectionId,
+            loadCollections 
+          }} />
         </main>
 
       </div>

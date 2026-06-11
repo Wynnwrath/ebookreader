@@ -158,7 +158,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const currentReaderLayout = readerSettings ? readerSettings.readerLayoutMode : localReaderLayout;
 
   return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[70] flex items-center justify-center p-4 animate-fade-in">
       <div 
         className="bg-surface-container border border-outline-variant/20 rounded-2xl w-full max-w-2xl max-h-[85vh] shadow-2xl flex flex-col overflow-hidden animate-pop-in"
         onClick={(e) => e.stopPropagation()}
