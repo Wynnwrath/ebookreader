@@ -68,6 +68,7 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
   }); // "dark" | "cream" | "sepia"
   const [activeChapter, setActiveChapter] = useState<string>("Beginning");
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [targetScroll, setTargetScroll] = useState<number | null>(null);
 
   const [pdfPageData, setPdfPageData] = useState<string | null>(null);
@@ -214,9 +215,10 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
   const loadBook = async () => {
     try {
       setLoading(true);
+      setError(null);
       const book = await tauriService.getBookDetails(Number(id));
       if (!book) {
-        console.error("Book details not found");
+        setError("Book details not found in database.");
         return;
       }
       setBookDetails(book);
@@ -257,6 +259,7 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
           await loadProgressAndBookmarks(book.id);
         } catch (err) {
           console.error("Failed to load PDF metadata:", err);
+          setError("Failed to parse PDF metadata.");
         }
       } else {
         const content = await tauriService.readEpub(book.file_path);
@@ -306,42 +309,8 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
       }
 
     } catch (err) {
-      console.error("Failed to load book content, using mock fallback:", err);
-      // Fallback mock book for development/browser-testing
-      const mockBook: BookDetails = {
-        id: Number(id),
-        title: "Five Fall Into Adventure",
-        author: "Enid Blyton",
-        file_path: "mock_adventure.epub",
-        file_type: "epub"
-      };
-      setBookDetails(mockBook);
-      setChapters([
-        { title: "Chapter 1: A Surprise Visitor", id: "chap-1", elementTop: 0 },
-        { title: "Chapter 2: The Adventure Begins", id: "chap-2", elementTop: 0 },
-        { title: "Chapter 3: Escape in the Dark", id: "chap-3", elementTop: 0 }
-      ]);
-      setHtmlContent(`
-        <h1 id="chap-1" class="text-2xl font-bold mb-4">Chapter 1: A Surprise Visitor</h1>
-        <p class="mb-4">It was a lovely sunny afternoon when the children arrived at Kirrin Cottage. Uncle Quentin was busy in his study, and Aunt Fanny welcomed them with a warm plate of homemade scones.</p>
-        <p class="mb-4">George and Timmy were already waiting by the gate, their eyes bright with excitement. "I've heard some strange stories about the old castle," George whispered. "The fishermen say someone has been lighting fires in the tower at night."</p>
-        <p class="mb-4">Julian, Dick, and Anne looked at each other. They knew that whenever George mentioned strange stories, an adventure was never far behind. "We must go and inspect it tomorrow," Julian said, his voice full of resolve.</p>
-        
-        <h1 id="chap-2" class="text-2xl font-bold mt-8 mb-4">Chapter 2: The Adventure Begins</h1>
-        <p class="mb-4">The next morning they set off early in their small rowboat, the waves gently lapping against the wooden hull. Timmy stood proudly at the bow, his tail wagging like a metronome.</p>
-        <p class="mb-4">As they drew closer to the island, the dark ruins of the castle loomed high above them. The air felt cold, and a strange silence hung over the stone walls. Anne shivered slightly. "Do you think we should turn back?" she asked.</p>
-        <p class="mb-4">"Nonsense!" said George. "We're almost there. Timmy will protect us." Timmy let out a soft bark of agreement.</p>
-
-        <h1 id="chap-3" class="text-2xl font-bold mt-8 mb-4">Chapter 3: Escape in the Dark</h1>
-        <p class="mb-4">Night had fallen quickly, wrapping the island in a thick blanket of fog. The children were huddled together inside the ruined dungeons, listening to the wind howling through the cracks.</p>
-        <p class="mb-4">Suddenly, Timmy growled. A heavy footstep echoed down the stone corridor. Julian held his breath, raising his lantern slightly. "Who's there?" he called out, his heart pounding.</p>
-        <p class="mb-4">There was no answer, only the sound of hurried footsteps running away. "After them!" George cried, and they dashed out into the dark night, embarking on the escape of their lives.</p>
-      `);
-      setIsFavorite(false);
-      // Wait for a render tick and set total pages to 3
-      setTimeout(() => {
-        setTotalPages(3);
-      }, 50);
+      console.error("Failed to load book content:", err);
+      setError("Failed to load book content. The file may be corrupt, missing, or in an unsupported format.");
     } finally {
       setLoading(false);
     }
@@ -587,6 +556,27 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
     }
   };
 
+  const scrollToAnchor = (targetId: string) => {
+    const container = readerRef.current;
+    if (!container) return;
+    const cleanId = targetId.startsWith("#") ? targetId.slice(1) : targetId;
+    try {
+      const escapedId = CSS.escape(cleanId);
+      const el = container.querySelector(`#${escapedId}`) || container.querySelector(`[name="${escapedId}"]`);
+      if (el) {
+        if (readerLayoutMode === "redesign") {
+          const containerLeft = container.getBoundingClientRect().left;
+          const elementLeft = el.getBoundingClientRect().left;
+          container.scrollBy({ left: elementLeft - containerLeft, behavior: "smooth" });
+        } else {
+          el.scrollIntoView({ behavior: "smooth" });
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to scroll to anchor:", cleanId, e);
+    }
+  };
+
   const handleChapterClick = (chapterId: string) => {
     if (bookDetails?.file_type === "pdf") {
       if (chapterId.startsWith("page-")) {
@@ -599,18 +589,7 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
       setIsLeftHovered(false);
       return;
     }
-    const container = readerRef.current;
-    if (!container) return;
-    const el = container.querySelector(`#${chapterId}`);
-    if (el) {
-      if (readerLayoutMode === "redesign") {
-        const containerLeft = container.getBoundingClientRect().left;
-        const elementLeft = el.getBoundingClientRect().left;
-        container.scrollBy({ left: elementLeft - containerLeft, behavior: "smooth" });
-      } else {
-        el.scrollIntoView({ behavior: "smooth" });
-      }
-    }
+    scrollToAnchor(chapterId);
     setIsLeftHovered(false);
   };
 
@@ -770,9 +749,25 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
     return Math.round(((currentPage - 1) / (totalPages - 1)) * 100);
   };
 
+  if (error) {
+    return (
+      <div className="w-screen h-screen flex flex-col items-center justify-center bg-bg text-on-surface-variant space-y-4 p-6 text-center" style={getThemeStyles()}>
+        <FiX className="w-12 h-12 text-rose-500" />
+        <h2 className="text-lg font-bold text-on-surface">Unable to Load Volume</h2>
+        <p className="text-xs text-on-surface-variant max-w-md leading-relaxed">{error}</p>
+        <button 
+          onClick={() => navigate("/")}
+          className="px-6 py-2.5 rounded-xl text-xs font-bold bg-primary text-on-primary hover:scale-[1.02] active:scale-[0.98] transition duration-200 cursor-pointer shadow-lg shadow-primary/20"
+        >
+          Return to Library
+        </button>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
-      <div className="w-screen h-screen flex items-center justify-center bg-bg text-on-surface-variant text-sm font-semibold">
+      <div className="w-screen h-screen flex items-center justify-center bg-bg text-on-surface-variant text-sm font-semibold animate-pulse">
         Loading e-book contents...
       </div>
     );
@@ -804,7 +799,7 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
           <div className="flex items-center gap-3 border-b border-outline-variant/15 pb-4 mb-4">
             <div className="w-10 h-14 bg-surface-container rounded shadow-sm border border-outline-variant/10 flex-shrink-0 overflow-hidden flex items-center justify-center text-[10px] font-bold text-on-surface-variant">
               {coverUrl ? (
-                <img src={coverUrl} alt={bookDetails.title} className="w-full h-full object-cover animate-fade-in" />
+                <img src={coverUrl} alt={bookDetails.title} className="w-full h-full object-cover animate-fade-in cover-image" />
               ) : (
                 "EPUB"
               )}
@@ -871,7 +866,7 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
           <div className="flex items-center gap-3 border-b border-outline-variant/15 pb-4 mb-4">
             <div className="w-10 h-14 bg-surface-container rounded shadow-sm border border-outline-variant/10 flex-shrink-0 overflow-hidden flex items-center justify-center text-[10px] font-bold text-on-surface-variant">
               {coverUrl ? (
-                <img src={coverUrl} alt={bookDetails.title} className="w-full h-full object-cover animate-fade-in" />
+                <img src={coverUrl} alt={bookDetails.title} className="w-full h-full object-cover animate-fade-in cover-image" />
               ) : (
                 "EPUB"
               )}
@@ -1133,6 +1128,17 @@ const BookPage: React.FC<BookPageProps> = ({ userId: propUserId }) => {
             <div 
               className={`epub-rendered-content space-y-5 ${readerLayoutMode === "redesign" ? "h-full w-auto max-w-none" : ""}`}
               dangerouslySetInnerHTML={{ __html: htmlContent }} 
+              onClick={(e) => {
+                const target = e.target as HTMLElement;
+                const anchor = target.closest("a");
+                if (anchor) {
+                  const href = anchor.getAttribute("href");
+                  if (href && href.startsWith("#")) {
+                    e.preventDefault();
+                    scrollToAnchor(href);
+                  }
+                }
+              }}
             />
           </article>
         )}

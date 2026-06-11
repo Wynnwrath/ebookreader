@@ -50,9 +50,9 @@ const LibraryPage: React.FC = () => {
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState<boolean>(true);
 
-  const loadLibrary = async () => {
+  const loadLibrary = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const allBooks = await tauriService.listBooks();
       
       const progressPromises = allBooks.map(async (b) => {
@@ -123,7 +123,8 @@ const LibraryPage: React.FC = () => {
 
   useEffect(() => {
     if (userId) {
-      loadLibrary();
+      const isInitial = books.length === 0;
+      loadLibrary(!isInitial);
     }
   }, [userId, importTrigger]);
 
@@ -152,7 +153,7 @@ const LibraryPage: React.FC = () => {
       });
       if (selected && typeof selected === "string") {
         await tauriService.importBook(selected);
-        await loadLibrary();
+        await loadLibrary(true);
       }
     } catch (err) {
       console.error("Failed to import book:", err);
@@ -171,7 +172,7 @@ const LibraryPage: React.FC = () => {
       });
       if (selected && typeof selected === "string") {
         const errors = await tauriService.scanBooksDirectory(selected);
-        await loadLibrary();
+        await loadLibrary(true);
         if (errors && errors.length > 0) {
           await message(
             `Imported books, but some files failed to import:\n\n${errors.join("\n")}`,
@@ -193,7 +194,7 @@ const LibraryPage: React.FC = () => {
     if (confirm(`Are you sure you want to delete "${title}"?`)) {
       try {
         await tauriService.removeBook(id);
-        await loadLibrary();
+        await loadLibrary(true);
       } catch (err) {
         console.error("Failed to delete book:", err);
       }

@@ -17,7 +17,7 @@ import {
   FiFolder
 } from "react-icons/fi";
 import { tauriService } from "../services/tauriService";
-import { TauriBook, ProgressItem, Book, Annotation, ExtendedAnnotation } from "../types";
+import { TauriBook, ProgressItem, Book, Annotation, ExtendedAnnotation, Collection } from "../types";
 
 interface OutletContextType {
   userId: number | null;
@@ -33,6 +33,66 @@ const HomePage: React.FC = () => {
   const [streakDays, setStreakDays] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [recentAnnotations, setRecentAnnotations] = useState<ExtendedAnnotation[]>([]);
+  const [collections, setCollections] = useState<Collection[]>([]);
+
+  const defaultCollections: Collection[] = [
+    {
+      id: "philosophy",
+      name: "Philosophy & Ethics",
+      description: "Meditations on existence, morality, and the nature of consciousness.",
+      accentColor: "border-tertiary text-tertiary",
+      bookIds: [],
+      coverImage: "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=1200&q=80"
+    },
+    {
+      id: "science",
+      name: "Science & Nature",
+      description: "Exploring the cosmos, evolution, and the natural laws that govern our reality.",
+      accentColor: "border-secondary text-secondary",
+      bookIds: [],
+      coverImage: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80"
+    },
+    {
+      id: "fiction",
+      name: "Literary Fiction",
+      description: "Masterpieces of narrative voice, character depth, and linguistic beauty.",
+      accentColor: "border-primary text-primary",
+      bookIds: [],
+      coverImage: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=1200&q=80"
+    },
+    {
+      id: "history",
+      name: "Historical Archives",
+      description: "Primary sources, biographies, and global histories spanning Antiquity to the Modern Era.",
+      accentColor: "border-outline text-on-surface-variant",
+      bookIds: [],
+      coverImage: "https://images.unsplash.com/photo-1461360228754-6e81c478b882?auto=format&fit=crop&w=1200&q=80"
+    }
+  ];
+
+  const loadCollections = () => {
+    const saved = localStorage.getItem(`stellaron-collections-${userId}`);
+    if (saved) {
+      try {
+        const parsed: Collection[] = JSON.parse(saved);
+        const migrated = parsed.map(c => {
+          const matchingDefault = defaultCollections.find(d => d.id === c.id);
+          if (matchingDefault) {
+            return {
+              ...matchingDefault,
+              bookIds: c.bookIds,
+            };
+          }
+          return c;
+        });
+        setCollections(migrated);
+      } catch (e) {
+        setCollections(defaultCollections);
+      }
+    } else {
+      setCollections(defaultCollections);
+    }
+  };
 
   const literaryQuotes = [
     { text: "I have always imagined that Paradise will be a kind of library.", author: "Jorge Luis Borges" },
@@ -53,9 +113,9 @@ const HomePage: React.FC = () => {
     return "Good evening";
   };
 
-  const loadData = async () => {
+  const loadData = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const allBooks = await tauriService.listBooks();
       
       const progressPromises = allBooks.map(async (b) => {
@@ -145,7 +205,9 @@ const HomePage: React.FC = () => {
 
   useEffect(() => {
     if (userId) {
-      loadData();
+      const isInitial = books.length === 0;
+      loadData(!isInitial);
+      loadCollections();
     }
   }, [userId, importTrigger]);
 
@@ -157,7 +219,7 @@ const HomePage: React.FC = () => {
       });
       if (selected && typeof selected === "string") {
         await tauriService.importBook(selected);
-        await loadData();
+        await loadData(true);
       }
     } catch (err) {
       console.error("Failed to import book:", err);
@@ -176,7 +238,7 @@ const HomePage: React.FC = () => {
       });
       if (selected && typeof selected === "string") {
         const errors = await tauriService.scanBooksDirectory(selected);
-        await loadData();
+        await loadData(true);
         if (errors && errors.length > 0) {
           await message(
             `Imported books, but some files failed to import:\n\n${errors.join("\n")}`,
@@ -246,44 +308,7 @@ const HomePage: React.FC = () => {
     return streak;
   }
 
-  let displayReadingBooks = books.filter(b => b.progress > 0 && b.progress < 100);
-  if (displayReadingBooks.length === 0) {
-    if (books.length > 0) {
-      displayReadingBooks = books.slice(0, 3).map((book, idx) => ({
-        ...book,
-        progress: idx === 0 ? 68 : idx === 1 ? 35 : 12,
-        lastRead: idx === 0 ? "2h ago" : idx === 1 ? "Yesterday" : "3 days ago",
-        lastReadAt: new Date(Date.now() - idx * 86400000).toISOString()
-      }));
-    } else {
-      displayReadingBooks = [
-        {
-          id: -1,
-          title: "Five Fall Into Adventure",
-          author: "Enid Blyton",
-          progress: 68,
-          lastRead: "2h ago",
-          lastReadAt: new Date().toISOString()
-        },
-        {
-          id: -2,
-          title: "The Great Gatsby",
-          author: "F. Scott Fitzgerald",
-          progress: 35,
-          lastRead: "Yesterday",
-          lastReadAt: new Date(Date.now() - 86400000).toISOString()
-        },
-        {
-          id: -3,
-          title: "The Odyssey",
-          author: "Homer",
-          progress: 12,
-          lastRead: "3 days ago",
-          lastReadAt: new Date(Date.now() - 2 * 86400000).toISOString()
-        }
-      ];
-    }
-  }
+  const displayReadingBooks = books.filter(b => b.progress > 0 && b.progress < 100);
 
   if (loading) {
     return (
@@ -315,33 +340,26 @@ const HomePage: React.FC = () => {
       </section>
 
       {/* 1. Continue Reading / My books */}
-      {displayReadingBooks.length > 0 && (
-        <section className="space-y-6">
-          <div className="flex items-center justify-between border-b border-outline-variant/10 pb-3">
-            <h2 className="font-serif text-2xl font-bold text-on-surface">Active Desk</h2>
+      <section className="space-y-6">
+        <div className="flex items-center justify-between border-b border-outline-variant/10 pb-3">
+          <h2 className="font-serif text-2xl font-bold text-on-surface">Active Desk</h2>
+          {books.length > 0 && (
             <button 
               onClick={() => navigate("/library")}
               className="font-sans text-xs text-on-surface-variant/85 hover:text-tertiary transition-colors flex items-center gap-1 font-bold cursor-pointer"
             >
               View Full Catalog <FiChevronRight className="w-4.5 h-4.5" />
             </button>
-          </div>
+          )}
+        </div>
 
-          {/* Grid of clean horizontal book entries */}
+        {displayReadingBooks.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {displayReadingBooks.map((book) => (
               <div 
                 key={book.id}
                 onClick={() => {
-                  if (book.id < 0) {
-                    if (books.length > 0) {
-                      navigate(`/book-details/${books[0].id}`);
-                    } else {
-                      handleImport();
-                    }
-                  } else {
-                    navigate(`/book-details/${book.id}`);
-                  }
+                  navigate(`/book/${book.id}`);
                 }}
                 className="group flex gap-5 bg-surface-container-low/30 border border-outline-variant/10 rounded-2xl p-4 hover:bg-surface-container-low/80 hover:border-outline-variant/20 transition-all duration-300 shadow-sm cursor-pointer relative overflow-hidden"
               >
@@ -350,7 +368,7 @@ const HomePage: React.FC = () => {
                   {covers[book.id] ? (
                     <img 
                       alt={book.title} 
-                      className="w-full h-full object-cover group-hover:scale-102 transition duration-300" 
+                      className="w-full h-full object-cover group-hover:scale-102 transition duration-300 cover-image" 
                       src={covers[book.id]} 
                     />
                   ) : (
@@ -402,8 +420,145 @@ const HomePage: React.FC = () => {
               </div>
             ))}
           </div>
-        </section>
-      )}
+        ) : (
+          <div className="flex flex-col items-center justify-center p-12 border border-dashed border-outline-variant/20 rounded-2xl bg-surface-container-low/20 text-center space-y-4">
+            <div className="p-4 rounded-full bg-surface-container-high border border-outline-variant/10 text-on-surface-variant">
+              <FiBookOpen className="w-8 h-8 opacity-60" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-bold text-base text-on-surface">Your reading desk is empty</h3>
+              <p className="text-xs text-on-surface-variant/80 max-w-sm">
+                {books.length > 0 
+                  ? "Go to your library and open a book to start tracking your progress here."
+                  : "Import your first EPUB or PDF book to start reading and tracking progress."
+                }
+              </p>
+            </div>
+            <div className="flex items-center gap-3 pt-2">
+              {books.length > 0 ? (
+                <button
+                  onClick={() => navigate("/library")}
+                  className="font-semibold text-xs py-2 px-4 bg-tertiary text-surface-container-lowest hover:bg-tertiary/90 rounded-lg flex items-center gap-1.5 transition cursor-pointer shadow-sm animate-pop-in"
+                >
+                  <span>Go to Library</span>
+                  <FiChevronRight className="w-4.5 h-4.5" />
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={handleImport}
+                    className="font-semibold text-xs py-2 px-4 bg-tertiary text-surface-container-lowest hover:bg-tertiary/90 rounded-lg flex items-center gap-1.5 transition cursor-pointer shadow-sm"
+                  >
+                    <FiPlus className="w-4 h-4" />
+                    <span>Import File</span>
+                  </button>
+                  <button
+                    onClick={handleImportFolder}
+                    className="font-semibold text-xs py-2 px-4 bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/35 text-on-surface rounded-lg flex items-center gap-1.5 transition cursor-pointer shadow-sm"
+                  >
+                    <FiFolder className="w-4 h-4" />
+                    <span>Import Folder</span>
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* Collections & Curations Section */}
+      <section className="space-y-6">
+        <div className="flex items-center justify-between border-b border-outline-variant/10 pb-3">
+          <h2 className="font-serif text-2xl font-bold text-on-surface">Collections & Curations</h2>
+          <button 
+            onClick={() => navigate("/collections")}
+            className="font-sans text-xs text-on-surface-variant/85 hover:text-tertiary transition-colors flex items-center gap-1 font-bold cursor-pointer"
+          >
+            Manage Collections <FiChevronRight className="w-4.5 h-4.5" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {collections.length <= 4 ? (
+            collections.map((col) => (
+              <div 
+                key={col.id}
+                onClick={() => navigate("/collections", { state: { activeCollectionId: col.id } })}
+                className="group relative h-48 rounded-2xl overflow-hidden cursor-pointer border border-outline-variant/10 card-glow transition-all duration-500 bg-surface-container-low shadow-sm"
+              >
+                {col.coverImage ? (
+                  <img 
+                    className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-105 transition-transform duration-700 mix-blend-luminosity" 
+                    alt={`${col.name} cover`}
+                    src={col.coverImage}
+                  />
+                ) : (
+                  <div className={`absolute inset-0 opacity-20 ${col.accentColor.split(" ")[0]}`}></div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-surface-container-lowest/95 via-surface/40 to-transparent"></div>
+                
+                <div className="absolute inset-0 p-5 flex flex-col justify-between z-10">
+                  <div className="flex justify-between items-start">
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border bg-surface-container/60 ${col.accentColor}`}>
+                      {col.bookIds.length} VOLUMES
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-serif text-base font-bold text-on-surface truncate group-hover:text-tertiary transition-colors">{col.name}</h3>
+                    <p className="text-xs text-on-surface-variant/90 truncate mt-1">{col.description || "Curated book list."}</p>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <>
+              {collections.slice(0, 3).map((col) => (
+                <div 
+                  key={col.id}
+                  onClick={() => navigate("/collections", { state: { activeCollectionId: col.id } })}
+                  className="group relative h-48 rounded-2xl overflow-hidden cursor-pointer border border-outline-variant/10 card-glow transition-all duration-500 bg-surface-container-low shadow-sm"
+                >
+                  {col.coverImage ? (
+                    <img 
+                      className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-105 transition-transform duration-700 mix-blend-luminosity" 
+                      alt={`${col.name} cover`}
+                      src={col.coverImage}
+                    />
+                  ) : (
+                    <div className={`absolute inset-0 opacity-20 ${col.accentColor.split(" ")[0]}`}></div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-surface-container-lowest/95 via-surface/40 to-transparent"></div>
+                  
+                  <div className="absolute inset-0 p-5 flex flex-col justify-between z-10">
+                    <div className="flex justify-between items-start">
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border bg-surface-container/60 ${col.accentColor}`}>
+                        {col.bookIds.length} VOLUMES
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-serif text-base font-bold text-on-surface truncate group-hover:text-tertiary transition-colors">{col.name}</h3>
+                      <p className="text-xs text-on-surface-variant/90 truncate mt-1">{col.description || "Curated book list."}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {/* More Collections Card */}
+              <div 
+                onClick={() => navigate("/collections")}
+                className="group relative h-48 rounded-2xl overflow-hidden cursor-pointer border border-outline-variant/15 border-dashed bg-surface-container-low/40 hover:bg-surface-container-high/60 transition-all duration-500 flex flex-col items-center justify-center gap-3"
+              >
+                <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center border border-outline-variant/10 group-hover:bg-tertiary/10 transition-colors">
+                  <FiChevronRight className="text-lg text-on-surface-variant group-hover:text-tertiary transition-colors" />
+                </div>
+                <span className="font-semibold text-sm text-on-surface-variant group-hover:text-on-surface transition-colors">
+                  + {collections.length - 3} More Collections
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+      </section>
 
       {/* 2. Reader's Journal & Reflections */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">

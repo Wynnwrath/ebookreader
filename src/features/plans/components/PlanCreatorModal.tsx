@@ -44,8 +44,14 @@ export const PlanCreatorModal: React.FC<PlanCreatorModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in-backdrop">
-      <div className="bg-surface border border-outline-variant/25 rounded-2xl w-full max-w-[480px] shadow-2xl overflow-hidden relative p-8 flex flex-col gap-6 animate-zoom-in-modal text-on-surface">
+    <div 
+      className="fixed inset-0 bg-background/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-surface border border-outline-variant/25 rounded-2xl w-full max-w-[480px] shadow-2xl overflow-hidden relative p-8 flex flex-col gap-6 animate-zoom-in-modal text-on-surface"
+        onClick={(e) => e.stopPropagation()}
+      >
         
         <div className="flex justify-between items-center border-b border-outline-variant/10 pb-4">
           <h2 className="text-2xl font-serif font-bold text-on-surface">Create Reading Plan</h2>

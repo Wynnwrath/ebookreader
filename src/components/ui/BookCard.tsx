@@ -88,7 +88,7 @@ const BookCard: React.FC<BookCardProps> = ({
             <img 
               src={cover} 
               alt={book.title}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover cover-image"
             />
           ) : (
             <div className={`w-full h-full flex flex-col justify-between p-3 font-serif ${getCoverColorClass(book.id)}`}>
@@ -159,7 +159,7 @@ const BookCard: React.FC<BookCardProps> = ({
             <img 
               src={cover} 
               alt={book.title}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover cover-image"
             />
           ) : (
             <div className={`w-full h-full flex flex-col justify-between p-1.5 font-serif text-[7px] text-white leading-tight ${getCoverColorClass(book.id)}`}>
@@ -242,7 +242,7 @@ const BookCard: React.FC<BookCardProps> = ({
             <img 
               src={cover} 
               alt={book.title}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover cover-image"
             />
           ) : (
             <div className={`w-full h-full flex flex-col justify-between p-1.5 font-serif text-[7px] leading-tight ${getCoverColorClass(book.id)}`}>
@@ -287,7 +287,7 @@ const BookCard: React.FC<BookCardProps> = ({
           <img 
             src={cover} 
             alt={book.title}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover cover-image"
           />
         ) : (
           <div className={`w-full h-full flex flex-col justify-between p-4 font-serif text-white ${getCoverColorClass(book.id)}`}>

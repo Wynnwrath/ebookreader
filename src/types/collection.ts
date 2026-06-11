@@ -4,4 +4,5 @@ export interface Collection {
   description: string;
   accentColor: string;
   bookIds: number[];
+  coverImage?: string;
 }

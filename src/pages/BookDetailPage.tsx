@@ -15,7 +15,7 @@ import {
   FiCheckCircle
 } from "react-icons/fi";
 import { tauriService } from "../services/tauriService";
-import { BookDetails, Chapter, ReadingProgress } from "../types";
+import { BookDetails, Chapter, ReadingProgress, Collection } from "../types";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 
@@ -37,25 +37,17 @@ const BookDetailPage: React.FC = () => {
   const [isFavorite, setIsFavorite] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<"about" | "chapters">("about");
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [showCollectionDropdown, setShowCollectionDropdown] = useState<boolean>(false);
 
   const loadBookData = async () => {
     if (!id) return;
     try {
       setLoading(true);
-      let details = await tauriService.getBookDetails(Number(id)).catch(() => null);
+      const details = await tauriService.getBookDetails(Number(id)).catch(() => null);
       if (!details) {
-        // Fallback mock book for development/browser testing
-        details = {
-          id: Number(id) || -1,
-          title: Number(id) === -2 ? "The Great Gatsby" : "Five Fall Into Adventure",
-          author: Number(id) === -2 ? "F. Scott Fitzgerald" : "Enid Blyton",
-          publisher: "George Newnes Ltd.",
-          published_date: "1940-05-12",
-          isbn: "978-0-333-12345-6",
-          file_type: "epub",
-          file_path: "/books/adventure.epub",
-          added_at: new Date(Date.now() - 5 * 86400000).toISOString()
-        };
+        setBook(null);
+        return;
       }
       const bookData = details;
       setBook(bookData);
@@ -84,18 +76,7 @@ const BookDetailPage: React.FC = () => {
           userId, 
           bookId: bookData.id 
         }).catch(() => null);
-        
-        if (prog) {
-          setProgress(prog);
-        } else {
-          // Fallback mock progress
-          setProgress({
-            progress_percentage: bookData.id === -2 ? 35 : 68,
-            chapter_title: bookData.id === -2 ? "Chapter 3" : "Chapter 1: The Caravan in the Woods",
-            page_number: 12,
-            last_read_at: new Date().toISOString()
-          });
-        }
+        setProgress(prog);
       } catch (e) {
         console.error("Failed to load reading progress:", e);
       }
@@ -114,7 +95,7 @@ const BookDetailPage: React.FC = () => {
           setChapters(parsedChaps);
         } catch (e) {
           console.warn("Failed to parse PDF page count:", e);
-          setChapters([{ title: "Page 1", id: "page-1" }]);
+          setChapters([]);
         }
       } else {
         try {
@@ -138,15 +119,8 @@ const BookDetailPage: React.FC = () => {
             throw new Error("No headings parsed");
           }
         } catch (e) {
-          console.warn("Failed to parse EPUB chapters, using mock chapters:", e);
-          setChapters([
-            { title: "Chapter 1: The Caravan in the Woods", id: "chapter-1" },
-            { title: "Chapter 2: An Unexpected Invitation", id: "chapter-2" },
-            { title: "Chapter 3: Secret Trails", id: "chapter-3" },
-            { title: "Chapter 4: The Discovery at Midnight", id: "chapter-4" },
-            { title: "Chapter 5: Escaping the Trap", id: "chapter-5" },
-            { title: "Chapter 6: Safe Return", id: "chapter-6" }
-          ]);
+          console.warn("Failed to parse EPUB chapters:", e);
+          setChapters([]);
         }
       }
 
@@ -157,9 +131,41 @@ const BookDetailPage: React.FC = () => {
     }
   };
 
+  const loadCollections = () => {
+    const saved = localStorage.getItem(`stellaron-collections-${userId}`);
+    if (saved) {
+      setCollections(JSON.parse(saved));
+    }
+  };
+
   useEffect(() => {
     loadBookData();
+    loadCollections();
   }, [id, userId]);
+
+  useEffect(() => {
+    const handleOutsideClick = () => {
+      setShowCollectionDropdown(false);
+    };
+    window.addEventListener("click", handleOutsideClick);
+    return () => window.removeEventListener("click", handleOutsideClick);
+  }, []);
+
+  const toggleBookInCollection = (collectionId: string) => {
+    if (!book) return;
+    const updated = collections.map(c => {
+      if (c.id === collectionId) {
+        const exists = c.bookIds.includes(book.id);
+        const newBookIds = exists 
+          ? c.bookIds.filter(id => id !== book.id) 
+          : [...c.bookIds, book.id];
+        return { ...c, bookIds: newBookIds };
+      }
+      return c;
+    });
+    setCollections(updated);
+    localStorage.setItem(`stellaron-collections-${userId}`, JSON.stringify(updated));
+  };
 
   const toggleFavorite = () => {
     if (!book) return;
@@ -207,7 +213,20 @@ const BookDetailPage: React.FC = () => {
     );
   }
 
-  if (!book) return null;
+  if (!book) {
+    return (
+      <div className="w-full h-[60vh] flex flex-col items-center justify-center text-text-dim space-y-4">
+        <FiInfo className="w-12 h-12 text-on-surface-variant/40" />
+        <p className="text-sm font-semibold">Book not found or failed to load.</p>
+        <button 
+          onClick={() => navigate("/library")}
+          className="text-xs font-bold text-tertiary hover:underline cursor-pointer"
+        >
+          Go Back to Library
+        </button>
+      </div>
+    );
+  }
 
   const percent = progress?.progress_percentage ? Math.round(progress.progress_percentage) : 0;
   const lastReadDate = progress?.last_read_at ? new Date(progress.last_read_at).toLocaleDateString(undefined, {
@@ -242,7 +261,7 @@ const BookDetailPage: React.FC = () => {
         {/* Cover Thumbnail on Left */}
         <div className="w-44 h-64 mx-auto md:mx-0 shrink-0 bg-surface-container rounded-xl overflow-hidden border border-outline-variant/10 shadow-2xl relative group cursor-pointer transition-transform duration-300 hover:scale-[1.03]">
           {coverUrl ? (
-            <img src={coverUrl} alt={book.title} className="w-full h-full object-cover" />
+            <img src={coverUrl} alt={book.title} className="w-full h-full object-cover cover-image" />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-surface-container to-surface-container-high text-text-dim font-bold text-lg uppercase">
               EPUB
@@ -326,6 +345,52 @@ const BookDetailPage: React.FC = () => {
               <FiHeart className={`w-4 h-4 ${isFavorite ? "fill-current" : ""}`} />
             </button>
 
+            <div className="relative">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowCollectionDropdown(!showCollectionDropdown);
+                }}
+                className="p-3 rounded-xl border bg-surface-container border-outline-variant/15 text-text-dim hover:text-text hover:border-outline-variant/40 transition duration-200 cursor-pointer flex items-center gap-1.5"
+                title="Add to Collection"
+              >
+                <FiBookmark className="w-4 h-4" />
+                <span className="text-xs font-bold px-1">Collections</span>
+              </button>
+              {showCollectionDropdown && (
+                <div className="absolute left-0 mt-2 w-56 rounded-xl border border-outline-variant/20 bg-surface-container-lowest shadow-2xl z-50 p-2 space-y-1 animate-pop-in">
+                  <div className="px-3 py-1.5 text-[10px] font-bold text-on-surface-variant/60 uppercase tracking-wider">
+                    Add to Collection
+                  </div>
+                  {collections.length === 0 ? (
+                    <div className="px-3 py-2 text-xs text-text-dim italic">
+                      No collections created yet.
+                    </div>
+                  ) : (
+                    <div className="max-h-48 overflow-y-auto no-scrollbar space-y-0.5">
+                      {collections.map((col) => {
+                        const hasBook = col.bookIds.includes(book.id);
+                        return (
+                          <button
+                            key={col.id}
+                            onClick={() => toggleBookInCollection(col.id)}
+                            className="w-full text-left px-3 py-2 rounded-lg text-xs hover:bg-surface-container transition flex items-center justify-between cursor-pointer"
+                          >
+                            <span className="truncate pr-2 font-semibold text-on-surface">{col.name}</span>
+                            {hasBook ? (
+                              <FiCheckCircle className="w-3.5 h-3.5 text-tertiary shrink-0" />
+                            ) : (
+                              <span className="w-3.5 h-3.5 rounded-full border border-outline-variant/40 shrink-0" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             <button 
               onClick={handleDelete}
               className="p-3 rounded-xl border bg-surface-container border-outline-variant/15 text-text-dim hover:text-rose-500 hover:border-rose-500/40 hover:bg-rose-500/10 transition duration-200 cursor-pointer hover:scale-[1.03] active:scale-[0.97]"
@@ -379,12 +444,20 @@ const BookDetailPage: React.FC = () => {
                 <div className="space-y-6 animate-fade-in duration-200">
                   <div className="space-y-4">
                     <h3 className="text-sm font-bold text-text">Synopsis & Commentary</h3>
-                    <p className="text-xs text-text-dim leading-relaxed font-serif">
-                      This EPUB archive contains the complete digital edition of {book.title}. Stellaron Reader processes the original text flow and styling dynamically, providing high-fidelity typography, customizable font weights, margin alignments, and multi-column pagination matching scholarly layout ethics.
-                    </p>
-                    <p className="text-xs text-text-dim leading-relaxed font-serif">
-                      Open this book to access interactive bookmarks, note taking, theme overlays (sepia, dark, light), and fully integrated chapter navigation.
-                    </p>
+                    {book.description ? (
+                      <p className="text-xs text-text-dim leading-relaxed font-serif whitespace-pre-wrap">
+                        {book.description}
+                      </p>
+                    ) : (
+                      <>
+                        <p className="text-xs text-text-dim leading-relaxed font-serif italic">
+                          No synopsis or description is available for this volume.
+                        </p>
+                        <p className="text-xs text-text-dim leading-relaxed font-serif">
+                          This archive contains the complete digital edition of {book.title}. Stellaron Reader processes the original text flow and styling dynamically, providing high-fidelity typography, customizable font weights, margin alignments, and multi-column pagination matching scholarly layout ethics.
+                        </p>
+                      </>
+                    )}
                   </div>
 
                   {/* Metadata fields list */}

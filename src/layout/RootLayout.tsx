@@ -401,8 +401,17 @@ const RootLayout: React.FC<RootLayoutProps> = ({ userId }) => {
 
       {/* 2. IMPORT LIBRARY MODAL OVERLAY */}
       {showImportModal && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in-backdrop">
-          <div className="bg-surface border border-outline-variant/30 rounded-2xl w-full max-w-[540px] shadow-2xl overflow-hidden relative p-8 flex flex-col gap-6 animate-zoom-in-modal max-h-[90vh] overflow-y-auto no-scrollbar">
+        <div 
+          className="fixed inset-0 bg-background/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => {
+            setShowImportModal(false);
+            setSelectedFile(null);
+          }}
+        >
+          <div 
+            className="bg-surface border border-outline-variant/30 rounded-2xl w-full max-w-[540px] shadow-2xl overflow-hidden relative p-8 flex flex-col gap-6 animate-zoom-in-modal max-h-[90vh] overflow-y-auto no-scrollbar text-on-surface"
+            onClick={(e) => e.stopPropagation()}
+          >
             
             {/* Close Button */}
             <button 

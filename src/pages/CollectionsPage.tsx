@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { useOutletContext, useNavigate } from "react-router-dom";
+import { createPortal } from "react-dom";
+import { useOutletContext, useNavigate, useLocation } from "react-router-dom";
 import { 
   FiFolder, 
   FiPlus, 
@@ -30,20 +31,31 @@ const ACCENT_COLORS = [
   { name: "Classic Slate", value: "bg-slate-500/10 text-slate-500 border-slate-500/20" },
 ];
 
+const IMAGE_PRESETS = [
+  { name: "Classic Library", value: "https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&q=80&w=600" },
+  { name: "Cosmic Nebula", value: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=600" },
+  { name: "Abstract Fluid", value: "https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&q=80&w=600" },
+  { name: "Vintage Paper", value: "https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=600" },
+  { name: "Minimalist Grid", value: "https://images.unsplash.com/photo-1508962914676-134849a727f0?auto=format&fit=crop&q=80&w=600" },
+];
+
 const CollectionsPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { userId } = useOutletContext<OutletContextType>();
 
   const [books, setBooks] = useState<Book[]>([]);
   const [covers, setCovers] = useState<Record<number, string>>({});
   const [collections, setCollections] = useState<Collection[]>([]);
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
 
   // New collection form state
   const [showAddModal, setShowAddModal] = useState(false);
   const [newColName, setNewColName] = useState("");
   const [newColDesc, setNewColDesc] = useState("");
   const [newColColor, setNewColColor] = useState(ACCENT_COLORS[0].value);
+  const [newColImage, setNewColImage] = useState(IMAGE_PRESETS[0].value);
 
   const defaultCollections: Collection[] = [
     {
@@ -52,6 +64,7 @@ const CollectionsPage: React.FC = () => {
       description: "Meditations on existence, morality, and the nature of consciousness.",
       accentColor: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
       bookIds: [],
+      coverImage: "https://lh3.googleusercontent.com/aida-public/AB6AXuBADxipR4kafjQ3B8ms2HYo8xOTkT89WTQd142yrxjlu-goN3ohm90i2OVZmx0F8fzm2Y3PAkOlnNczPeFHi3RRIWrkLSltQAmRiffdq1RsCGo1B2sIMZUBo3i2voMuZF3A4-rd-TjRwXN_jWJQ4c7beDY35CuY67hiyQmR84vYPKipwBvW6I_Iwy5oFLf30T1bgWTJbAb831p00dSKjElxlAFAFlDjCVnEhfNMbk3YkjlccZ2qsjxvcyhNHUi0IHqF7iEQUK8wC-s",
     },
     {
       id: "science",
@@ -59,6 +72,7 @@ const CollectionsPage: React.FC = () => {
       description: "Inquiries into physical reality, taxonomy, and cosmic structure.",
       accentColor: "bg-blue-500/10 text-blue-500 border-blue-500/20",
       bookIds: [],
+      coverImage: "https://lh3.googleusercontent.com/aida-public/AB6AXuC0ZOxxfq410kcSfE_qrDjZHcPxYzCCVpKnkaGX-z9i-w4LmBTy1jZksfVxlrl2OCCERqp-QtUmSCFXbcwUXid5QcBBpeG651F472Gjj6qh4_hAJTUE25ll5a3AyrejEJSejEaAfIk84N3Z_irEg8Nzs7AqCFu2zYpZCJfWEWfjfm4wfVwS7lZcTxW9KI-LkSfDDC30faI5h6VHsfljiSw6aqbAV_8DkiXZsVFLyoRBu9ALZppcNkjVl9ffn528Wu2peWc6tAUG44k",
     },
     {
       id: "fiction",
@@ -66,6 +80,7 @@ const CollectionsPage: React.FC = () => {
       description: "Novels, poems, and stories that illuminate the human condition.",
       accentColor: "bg-amber-500/10 text-amber-500 border-amber-500/20",
       bookIds: [],
+      coverImage: "https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&q=80&w=600",
     },
     {
       id: "history",
@@ -73,15 +88,27 @@ const CollectionsPage: React.FC = () => {
       description: "Primary sources, biographies, and global histories spanning Antiquity to the Modern Era.",
       accentColor: "bg-orange-500/10 text-orange-500 border-orange-500/20",
       bookIds: [],
+      coverImage: "https://lh3.googleusercontent.com/aida-public/AB6AXuBLlUf9k2HWN6HAvjNGS34zqHpwj4pboo5htbpCVdpQkBPWFu6-04qg5aFaqb8o82I5UA5NepHukjgkw_DCz-Rhj3GkfzMG7r0AfhPEY9YZ-Pg6u9CSOtFe-CJsyGGthl1-3OwgUQUwPAXtkCEdabro11fUXP3Cd8I97rhixS3vwkS0FCO-qR5eEzdWlpE-KS41nMc769k2H2LyhHd7mXhWY8LNBx4EQq-UMxCUBr8uivQ0Dl8fE67zYsAIGfffAZ-AC0oXhQaqRWE",
     }
   ];
 
-  // Load collections from localStorage
+  // Load collections from localStorage with migration logic
   const loadCollections = () => {
     const saved = localStorage.getItem(`stellaron-collections-${userId}`);
     if (saved) {
       try {
-        setCollections(JSON.parse(saved));
+        const parsed: Collection[] = JSON.parse(saved);
+        const migrated = parsed.map(c => {
+          const matchingDefault = defaultCollections.find(d => d.id === c.id);
+          if (matchingDefault) {
+            return {
+              ...matchingDefault,
+              bookIds: c.bookIds, // preserve user's book associations
+            };
+          }
+          return c;
+        });
+        setCollections(migrated);
       } catch (e) {
         setCollections(defaultCollections);
       }
@@ -96,8 +123,9 @@ const CollectionsPage: React.FC = () => {
     localStorage.setItem(`stellaron-collections-${userId}`, JSON.stringify(updated));
   };
 
-  const loadData = async () => {
+  const loadData = async (silent = false) => {
     try {
+      if (!silent) setLoading(true);
       const allBooks = await tauriService.listBooks();
       
       const progressPromises = allBooks.map(async (b) => {
@@ -144,15 +172,27 @@ const CollectionsPage: React.FC = () => {
       setCovers(newCovers);
     } catch (err) {
       console.error("Failed to load books for collections:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     if (userId) {
       loadCollections();
-      loadData();
+      const isInitial = books.length === 0;
+      loadData(!isInitial);
     }
   }, [userId]);
+
+  // Deep linking logic from Dashboard
+  useEffect(() => {
+    if (location.state?.activeCollectionId) {
+      setActiveCollectionId(location.state.activeCollectionId);
+      // Clean up the location state so it doesn't reopen on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   const handleCreateCollection = (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,11 +204,13 @@ const CollectionsPage: React.FC = () => {
       description: newColDesc,
       accentColor: newColColor,
       bookIds: [],
+      coverImage: newColImage || undefined,
     };
 
     saveCollections([...collections, newCol]);
     setNewColName("");
     setNewColDesc("");
+    setNewColImage(IMAGE_PRESETS[0].value);
     setShowAddModal(false);
   };
 
@@ -219,6 +261,214 @@ const CollectionsPage: React.FC = () => {
     return collections.find(c => c.id === colId)?.bookIds.length || 0;
   };
 
+  const isDefaultCol = (id: string) => ["philosophy", "science", "fiction", "history"].includes(id);
+
+  const renderBookStack = (collection: Collection) => {
+    const collectionBooks = getCollectionBooks(collection.id);
+    
+    return (
+      <div className="flex -space-x-4">
+        {/* Show up to 3 books in a stack */}
+        {collectionBooks.slice(0, 3).map((book, idx) => {
+          const cover = covers[book.id];
+          const rotations = ["-rotate-6", "rotate-3", "rotate-0"];
+          const hoverTransforms = [
+            "group-hover:-rotate-12 group-hover:-translate-x-1",
+            "group-hover:rotate-6 group-hover:scale-105",
+            "group-hover:rotate-0 group-hover:translate-x-1"
+          ];
+          const rotationClass = rotations[idx % rotations.length];
+          const hoverClass = hoverTransforms[idx % hoverTransforms.length];
+          
+          return (
+            <div 
+              key={book.id} 
+              className={`w-12 h-16 bg-surface-container border border-outline-variant/30 rounded-sm shadow-xl transform ${rotationClass} ${hoverClass} overflow-hidden shrink-0 transition-all duration-300`}
+            >
+              {cover ? (
+                <img src={cover} alt={book.title} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-surface-container-high">
+                  <FiBookOpen className="w-4 h-4 text-on-surface-variant/40" />
+                </div>
+              )}
+            </div>
+          );
+        })}
+        
+        {/* If less than 3 books, fill with placeholder books */}
+        {Array.from({ length: Math.max(0, 3 - collectionBooks.length) }).map((_, idx) => {
+          const actualIdx = collectionBooks.length + idx;
+          const rotations = ["-rotate-6", "rotate-3", "rotate-0"];
+          const hoverTransforms = [
+            "group-hover:-rotate-12 group-hover:-translate-x-1",
+            "group-hover:rotate-6 group-hover:scale-105",
+            "group-hover:rotate-0 group-hover:translate-x-1"
+          ];
+          const rotationClass = rotations[actualIdx % rotations.length];
+          const hoverClass = hoverTransforms[actualIdx % hoverTransforms.length];
+          
+          return (
+            <div 
+              key={`placeholder-${idx}`} 
+              className={`w-12 h-16 bg-surface-container-high/30 border border-outline-variant/20 rounded-sm shadow-md transform ${rotationClass} ${hoverClass} shrink-0 flex items-center justify-center transition-all duration-300`}
+            >
+              <span className="text-[10px] text-on-surface-variant/20 font-bold font-serif">
+                {actualIdx + 1}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderCollectionCard = (col: Collection, index: number) => {
+    const bookCount = getCount(col.id);
+    const cycleIndex = index % 4;
+    
+    if (cycleIndex === 0) {
+      // Large Featured Card (8 col, 2 row)
+      return (
+        <div 
+          key={col.id}
+          onClick={() => setActiveCollectionId(col.id)}
+          className="col-span-12 md:col-span-8 row-span-2 relative rounded-xl overflow-hidden group cursor-pointer border border-outline-variant/10 card-glow transition-all duration-500"
+        >
+          {col.coverImage ? (
+            <img 
+              className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-1000 group-hover:opacity-80 mix-blend-luminosity" 
+              alt={`${col.name} cover`}
+              src={col.coverImage}
+            />
+          ) : (
+            <div className={`absolute inset-0 opacity-20 ${col.accentColor.split(" ")[0]}`}></div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-surface-container-lowest/95 via-surface/40 to-transparent"></div>
+          
+          {!isDefaultCol(col.id) && (
+            <button
+              onClick={(e) => handleDeleteCollection(col.id, e)}
+              className="absolute top-6 right-6 p-1.5 rounded bg-surface-container/60 hover:bg-red-500/10 text-on-surface-variant hover:text-red-500 transition cursor-pointer z-20"
+              title="Delete Collection"
+            >
+              <FiTrash2 className="w-4 h-4" />
+            </button>
+          )}
+
+          <div className="absolute bottom-0 left-0 w-full p-8 flex flex-col justify-end glass-panel h-1/3 group-hover:h-2/5 transition-all duration-500">
+            <div className="flex justify-between items-end">
+              <div className="min-w-0 pr-4">
+                <span className="font-label-sm text-xs text-tertiary uppercase tracking-widest mb-2 block font-semibold">{bookCount} Volumes</span>
+                <h2 className="font-display-lg text-2xl font-bold text-on-surface mb-1 truncate">{col.name}</h2>
+                <p className="font-body-md text-sm text-on-surface-variant max-w-md line-clamp-2">{col.description || "No description provided."}</p>
+              </div>
+              <div className="hidden md:flex shrink-0">
+                {renderBookStack(col)}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    } else if (cycleIndex === 1 || cycleIndex === 2) {
+      // Compact Card (4 col, 1 row)
+      return (
+        <div 
+          key={col.id}
+          onClick={() => setActiveCollectionId(col.id)}
+          className="col-span-12 md:col-span-4 row-span-1 relative rounded-xl overflow-hidden group cursor-pointer border border-outline-variant/10 card-glow transition-all duration-500 bg-surface-container-low"
+        >
+          {col.coverImage ? (
+            <img 
+              className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:scale-105 transition-transform duration-1000 mix-blend-overlay"
+              alt={`${col.name} cover`}
+              src={col.coverImage}
+            />
+          ) : (
+            <div className={`absolute inset-0 opacity-20 ${col.accentColor.split(" ")[0]}`}></div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-surface-container-lowest/90 to-surface/20"></div>
+          <div className="absolute inset-0 p-6 flex flex-col justify-between">
+            <div className="flex justify-between items-start">
+              <div className="flex items-center gap-2">
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${col.accentColor}`}>
+                  {bookCount} Volumes
+                </span>
+                {!isDefaultCol(col.id) && (
+                  <button
+                    onClick={(e) => handleDeleteCollection(col.id, e)}
+                    className="p-1 rounded hover:bg-red-500/10 text-on-surface-variant hover:text-red-500 transition cursor-pointer relative z-20"
+                    title="Delete Collection"
+                  >
+                    <FiTrash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              {renderBookStack(col)}
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-headline-md text-lg font-bold text-on-surface truncate group-hover:text-tertiary transition-colors">{col.name}</h3>
+              <p className="text-xs text-on-surface-variant truncate mt-1">{col.description || "No description provided."}</p>
+            </div>
+          </div>
+        </div>
+      );
+    } else {
+      // Horizontal Card (8 col, 1 row)
+      return (
+        <div 
+          key={col.id}
+          onClick={() => setActiveCollectionId(col.id)}
+          className="col-span-12 md:col-span-8 row-span-1 relative rounded-xl overflow-hidden group cursor-pointer border border-outline-variant/10 card-glow transition-all duration-500 flex bg-surface-container"
+        >
+          <div className="w-1/3 h-full relative overflow-hidden">
+            {col.coverImage ? (
+              <img 
+                className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:scale-105 transition-transform duration-1000 sepia-[.3]" 
+                alt={`${col.name} cover`}
+                src={col.coverImage}
+              />
+            ) : (
+              <div className={`w-full h-full flex items-center justify-center bg-surface-container-high`}>
+                <FiFolder className="w-8 h-8 text-on-surface-variant/30" />
+              </div>
+            )}
+          </div>
+          
+          {!isDefaultCol(col.id) && (
+            <button
+              onClick={(e) => handleDeleteCollection(col.id, e)}
+              className="absolute top-6 right-6 p-1.5 rounded bg-surface-container/60 hover:bg-red-500/10 text-on-surface-variant hover:text-red-500 transition cursor-pointer z-20"
+              title="Delete Collection"
+            >
+              <FiTrash2 className="w-4 h-4" />
+            </button>
+          )}
+
+          <div className="w-2/3 p-6 md:p-8 flex flex-col justify-center relative min-w-0">
+            <div className="absolute top-0 bottom-0 left-0 w-px bg-gradient-to-b from-transparent via-outline-variant/20 to-transparent"></div>
+            <div className="flex justify-between items-start mb-1">
+              <span className="font-label-sm text-xs text-tertiary uppercase tracking-widest font-semibold">Curated Series</span>
+              <span className="font-label-sm text-xs text-on-surface-variant font-semibold">{bookCount} Volumes</span>
+            </div>
+            <h3 className="font-headline-lg text-xl font-bold text-on-surface mb-2 truncate group-hover:text-tertiary transition-colors">{col.name}</h3>
+            <p className="font-body-md text-sm text-on-surface-variant leading-relaxed line-clamp-2">{col.description || "No description provided."}</p>
+            <div className="mt-4 flex justify-between items-center">
+              <div className="flex gap-2">
+                <span className={`px-2.5 py-1 bg-surface-container-highest rounded-full font-label-sm text-[10px] text-on-surface-variant border border-outline-variant/10 font-bold ${col.accentColor.split(" ")[1] || ""}`}>
+                  Active Archive
+                </span>
+              </div>
+              <div className="flex shrink-0">
+                {renderBookStack(col)}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+  };
+
   const activeCollection = collections.find(c => c.id === activeCollectionId);
   const activeColBooks = activeCollection ? getCollectionBooks(activeCollection.id) : [];
   const unsortedBooks = getUnsortedBooks();
@@ -240,133 +490,8 @@ const CollectionsPage: React.FC = () => {
           <span className="font-headline-md text-lg text-on-surface-variant group-hover:text-on-surface transition-colors">New Collection</span>
         </button>
 
-        {/* Philosophy & Ethics (col-span-8, row-span-2) */}
-        <div 
-          onClick={() => setActiveCollectionId("philosophy")}
-          className="col-span-12 md:col-span-8 row-span-2 relative rounded-xl overflow-hidden group cursor-pointer border border-outline-variant/10 card-glow transition-all duration-500"
-        >
-          <img 
-            className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-1000 group-hover:opacity-80 mix-blend-luminosity" 
-            alt="Philosophy cover"
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBADxipR4kafjQ3B8ms2HYo8xOTkT89WTQd142yrxjlu-goN3ohm90i2OVZmx0F8fzm2Y3PAkOlnNczPeFHi3RRIWrkLSltQAmRiffdq1RsCGo1B2sIMZUBo3i2voMuZF3A4-rd-TjRwXN_jWJQ4c7beDY35CuY67hiyQmR84vYPKipwBvW6I_Iwy5oFLf30T1bgWTJbAb831p00dSKjElxlAFAFlDjCVnEhfNMbk3YkjlccZ2qsjxvcyhNHUi0IHqF7iEQUK8wC-s"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-surface-container-lowest/95 via-surface/40 to-transparent"></div>
-          <div className="absolute bottom-0 left-0 w-full p-8 flex flex-col justify-end glass-panel h-1/3 group-hover:h-2/5 transition-all duration-500">
-            <div className="flex justify-between items-end">
-              <div>
-                <span className="font-label-sm text-xs text-tertiary uppercase tracking-widest mb-2 block font-semibold">{getCount("philosophy")} Volumes</span>
-                <h2 className="font-display-lg text-2xl font-bold text-on-surface mb-1">Philosophy & Ethics</h2>
-                <p className="font-body-md text-sm text-on-surface-variant max-w-md">Meditations on existence, morality, and the nature of consciousness.</p>
-              </div>
-              <div className="hidden md:flex -space-x-4">
-                <div className="w-12 h-16 bg-surface-container-low border border-outline-variant/30 rounded-sm shadow-xl transform -rotate-6"></div>
-                <div className="w-12 h-16 bg-surface-container border border-outline-variant/30 rounded-sm shadow-xl transform rotate-3"></div>
-                <div className="w-12 h-16 bg-surface-container-high border border-outline-variant/30 rounded-sm shadow-xl transform 0"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Science & Nature (col-span-4, row-span-1) */}
-        <div 
-          onClick={() => setActiveCollectionId("science")}
-          className="col-span-12 md:col-span-4 row-span-1 relative rounded-xl overflow-hidden group cursor-pointer border border-outline-variant/10 card-glow transition-all duration-500 bg-surface-container-low"
-        >
-          <img 
-            className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-105 transition-transform duration-1000 mix-blend-overlay"
-            alt="Science cover"
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuC0ZOxxfq410kcSfE_qrDjZHcPxYzCCVpKnkaGX-z9i-w4LmBTy1jZksfVxlrl2OCCERqp-QtUmSCFXbcwUXid5QcBBpeG651F472Gjj6qh4_hAJTUE25ll5a3AyrejEJSejEaAfIk84N3Z_irEg8Nzs7AqCFu2zYpZCJfWEWfjfm4wfVwS7lZcTxW9KI-LkSfDDC30faI5h6VHsfljiSw6aqbAV_8DkiXZsVFLyoRBu9ALZppcNkjVl9ffn528Wu2peWc6tAUG44k"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-surface-container-lowest/90 to-surface/20"></div>
-          <div className="absolute inset-0 p-6 flex flex-col justify-between">
-            <div className="flex justify-between items-start">
-              <FiCompass className="w-5 h-5 text-tertiary/50" />
-              <span className="font-label-sm text-xs text-on-surface-variant font-semibold">{getCount("science")} Volumes</span>
-            </div>
-            <div>
-              <h3 className="font-headline-md text-lg font-bold text-on-surface">Science & Nature</h3>
-            </div>
-          </div>
-        </div>
-
-        {/* Literary Fiction (col-span-4, row-span-1) */}
-        <div 
-          onClick={() => setActiveCollectionId("fiction")}
-          className="col-span-12 md:col-span-4 row-span-1 relative rounded-xl overflow-hidden group cursor-pointer border border-outline-variant/10 card-glow transition-all duration-500 bg-surface-container-low"
-        >
-          <div className="absolute inset-0 p-6 flex flex-col justify-between z-10">
-            <div className="flex justify-between items-start">
-              <FiEdit3 className="w-5 h-5 text-tertiary/50" />
-              <span className="font-label-sm text-xs text-on-surface-variant font-semibold">{getCount("fiction")} Volumes</span>
-            </div>
-            <div>
-              <h3 className="font-headline-md text-lg font-bold text-on-surface mb-2">Literary Fiction</h3>
-              <div className="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
-                <div className="w-3/4 h-full bg-tertiary rounded-full"></div>
-              </div>
-              <p className="font-label-sm text-xs text-on-surface-variant mt-2 text-right">Recently Active</p>
-            </div>
-          </div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full opacity-[0.03] pointer-events-none">
-            <div className="absolute top-4 left-10 w-3/4 h-8 bg-on-surface border border-on-surface rounded-sm transform -rotate-12"></div>
-            <div className="absolute top-12 left-12 w-3/4 h-8 bg-on-surface border border-on-surface rounded-sm transform -rotate-6"></div>
-            <div className="absolute top-20 left-8 w-3/4 h-8 bg-on-surface border border-on-surface rounded-sm"></div>
-          </div>
-        </div>
-
-        {/* Historical Archives (col-span-8, row-span-1) */}
-        <div 
-          onClick={() => setActiveCollectionId("history")}
-          className="col-span-12 md:col-span-8 row-span-1 relative rounded-xl overflow-hidden group cursor-pointer border border-outline-variant/10 card-glow transition-all duration-500 flex bg-surface-container"
-        >
-          <div className="w-1/3 h-full relative overflow-hidden">
-            <img 
-              className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:scale-105 transition-transform duration-1000 sepia-[.3]" 
-              alt="History cover"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBLlUf9k2HWN6HAvjNGS34zqHpwj4pboo5htbpCVdpQkBPWFu6-04qg5aFaqb8o82I5UA5NepHukjgkw_DCz-Rhj3GkfzMG7r0AfhPEY9YZ-Pg6u9CSOtFe-CJsyGGthl1-3OwgUQUwPAXtkCEdabro11fUXP3Cd8I97rhixS3vwkS0FCO-qR5eEzdWlpE-KS41nMc769k2H2LyhHd7mXhWY8LNBx4EQq-UMxCUBr8uivQ0Dl8fE67zYsAIGfffAZ-AC0oXhQaqRWE"
-            />
-          </div>
-          <div className="w-2/3 p-8 flex flex-col justify-center relative">
-            <div className="absolute top-0 bottom-0 left-0 w-px bg-gradient-to-b from-transparent via-outline-variant/20 to-transparent"></div>
-            <div className="flex justify-between items-start mb-1">
-              <span className="font-label-sm text-xs text-tertiary uppercase tracking-widest font-semibold">Curated Series</span>
-              <span className="font-label-sm text-xs text-on-surface-variant font-semibold">{getCount("history")} Volumes</span>
-            </div>
-            <h3 className="font-headline-lg text-xl font-bold text-on-surface mb-2">Historical Archives</h3>
-            <p className="font-body-md text-sm text-on-surface-variant leading-relaxed">Primary sources, biographies, and global histories spanning Antiquity to the Modern Era.</p>
-            <div className="mt-4 flex gap-2">
-              <span className="px-2.5 py-1 bg-surface-container-highest rounded-full font-label-sm text-[10px] text-on-surface-variant border border-outline-variant/10 font-bold">Antiquity</span>
-              <span className="px-2.5 py-1 bg-surface-container-highest rounded-full font-label-sm text-[10px] text-on-surface-variant border border-outline-variant/10 font-bold">Renaissance</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Dynamically Rendered Custom Collections */}
-        {collections
-          .filter(c => !["philosophy", "science", "fiction", "history"].includes(c.id))
-          .map((col) => (
-            <div 
-              key={col.id}
-              onClick={() => setActiveCollectionId(col.id)}
-              className="col-span-12 md:col-span-4 row-span-1 relative rounded-xl overflow-hidden group cursor-pointer border border-outline-variant/10 card-glow transition-all duration-500 bg-surface-container-low p-6 flex flex-col justify-between"
-            >
-              <div className="flex justify-between items-start">
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${col.accentColor}`}>
-                  {col.bookIds.length} Volumes
-                </span>
-                <button
-                  onClick={(e) => handleDeleteCollection(col.id, e)}
-                  className="p-1 rounded hover:bg-red-500/10 text-on-surface-variant hover:text-red-500 transition cursor-pointer"
-                >
-                  <FiTrash2 className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="space-y-1">
-                <h3 className="font-headline-md text-lg font-bold text-on-surface truncate">{col.name}</h3>
-                <p className="text-xs text-on-surface-variant truncate">{col.description || "No description provided."}</p>
-              </div>
-            </div>
-          ))}
+        {/* Dynamic Bento Cards for Collections */}
+        {collections.map((col, index) => renderCollectionCard(col, index))}
 
       </div>
 
@@ -390,7 +515,7 @@ const CollectionsPage: React.FC = () => {
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-14 bg-surface-container-highest border border-outline-variant/20 rounded shadow-sm flex items-center justify-center shrink-0">
                     {covers[book.id] ? (
-                      <img src={covers[book.id]} alt={book.title} className="w-full h-full object-cover rounded" />
+                      <img src={covers[book.id]} alt={book.title} className="w-full h-full object-cover rounded cover-image" />
                     ) : (
                       <FiBookOpen className="text-on-surface-variant/40 w-5 h-5" />
                     )}
@@ -405,7 +530,7 @@ const CollectionsPage: React.FC = () => {
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate(`/book-details/${book.id}`);
+                      navigate(`/book/${book.id}`);
                     }}
                     className="p-2 rounded-full hover:bg-tertiary/10 text-on-surface-variant group-hover:text-tertiary transition-all"
                   >
@@ -419,7 +544,7 @@ const CollectionsPage: React.FC = () => {
       </section>
 
       {/* Collection Detail Drawer / Modal Overlay */}
-      {activeCollection && (
+      {activeCollection && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/60 backdrop-blur-sm animate-fade-in">
           <div className="bg-surface-container-lowest border-l border-outline-variant/20 h-full w-full max-w-lg shadow-2xl p-8 flex flex-col justify-between animate-in slide-in-from-right duration-300">
             
@@ -468,7 +593,7 @@ const CollectionsPage: React.FC = () => {
             </div>
 
             {/* Books in collection (Middle Scrollable) */}
-            <div className="flex-1 my-6 overflow-y-auto no-scrollbar space-y-3">
+            <div className="flex-1 my-6 overflow-y-auto min-h-0 no-scrollbar space-y-3">
               <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Catalogued Volumes</h3>
               {activeColBooks.length === 0 ? (
                 <p className="text-sm text-on-surface-variant italic py-8 text-center border border-dashed border-outline-variant/20 rounded-xl">
@@ -490,7 +615,7 @@ const CollectionsPage: React.FC = () => {
                           <img 
                             src={covers[book.id]} 
                             alt={book.title} 
-                            className="w-8 h-10 object-cover rounded shadow-sm shrink-0"
+                            className="w-8 h-10 object-cover rounded shadow-sm shrink-0 cover-image"
                           />
                         ) : (
                           <div className="w-8 h-10 rounded bg-surface border border-outline-variant/20 flex items-center justify-center shrink-0">
@@ -502,13 +627,26 @@ const CollectionsPage: React.FC = () => {
                           <p className="text-[10px] text-on-surface-variant truncate">{book.author}</p>
                         </div>
                       </div>
-                      <button
-                        onClick={(e) => handleRemoveBookFromCollection(activeCollection.id, book.id, e)}
-                        className="p-1.5 rounded hover:bg-red-500/10 text-on-surface-variant hover:text-red-500 transition shrink-0 cursor-pointer"
-                        title="Remove from Collection"
-                      >
-                        <FiX className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveCollectionId(null);
+                            navigate(`/book/${book.id}`);
+                          }}
+                          className="p-1.5 rounded hover:bg-tertiary/10 text-on-surface-variant hover:text-tertiary transition cursor-pointer"
+                          title="Read Now"
+                        >
+                          <FiPlay className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => handleRemoveBookFromCollection(activeCollection.id, book.id, e)}
+                          className="p-1.5 rounded hover:bg-red-500/10 text-on-surface-variant hover:text-red-500 transition shrink-0 cursor-pointer"
+                          title="Remove from Collection"
+                        >
+                          <FiX className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -522,27 +660,34 @@ const CollectionsPage: React.FC = () => {
                   handleDeleteCollection(activeCollection.id, e);
                   setActiveCollectionId(null);
                 }}
-                className="flex items-center gap-2 text-xs font-bold text-red-500 hover:text-red-400 transition"
+                className="flex items-center gap-2 text-xs font-bold text-red-500 hover:text-red-400 transition animate-pop-in"
               >
                 <FiTrash2 className="w-4 h-4" />
                 <span>Delete Collection</span>
               </button>
               <button
                 onClick={() => setActiveCollectionId(null)}
-                className="px-5 py-2 bg-surface-container hover:bg-surface-container-high text-on-surface border border-outline-variant/25 rounded-lg text-xs font-bold transition"
+                className="px-5 py-2 bg-surface-container hover:bg-surface-container-high text-on-surface border border-outline-variant/25 rounded-lg text-xs font-bold transition cursor-pointer"
               >
                 Close
               </button>
             </div>
 
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal for adding collection */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-pop-in">
-          <div className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-6 w-full max-w-md shadow-2xl space-y-4">
+      {showAddModal && createPortal(
+        <div 
+          className="fixed inset-0 bg-background/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setShowAddModal(false)}
+        >
+          <div 
+            className="bg-surface-container border border-outline-variant/20 rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4 animate-pop-in text-on-surface"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-headline-md font-bold text-on-surface">Create Collection</h3>
               <button 
@@ -574,6 +719,35 @@ const CollectionsPage: React.FC = () => {
                   onChange={(e) => setNewColDesc(e.target.value)}
                   rows={3}
                   className="w-full bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-on-surface focus:outline-none focus:border-tertiary resize-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider block">Collection Backdrop Image</label>
+                <div className="grid grid-cols-5 gap-2 mb-2">
+                  {IMAGE_PRESETS.map((preset) => (
+                    <button
+                      key={preset.value}
+                      type="button"
+                      onClick={() => setNewColImage(preset.value)}
+                      className={`aspect-video rounded-lg overflow-hidden border cursor-pointer transition relative group/preset ${
+                        newColImage === preset.value ? "ring-2 ring-tertiary ring-offset-2 ring-offset-surface-container-low" : "border-outline-variant/30 hover:border-outline-variant/60"
+                      }`}
+                      title={preset.name}
+                    >
+                      <img src={preset.value} alt={preset.name} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/preset:opacity-100 transition-opacity flex items-center justify-center">
+                        <span className="text-[8px] text-white font-bold">{preset.name.split(" ")[0]}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  placeholder="Or paste custom image URL..."
+                  value={newColImage}
+                  onChange={(e) => setNewColImage(e.target.value)}
+                  className="w-full bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-on-surface focus:outline-none focus:border-tertiary text-xs"
                 />
               </div>
 
@@ -612,7 +786,8 @@ const CollectionsPage: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>
